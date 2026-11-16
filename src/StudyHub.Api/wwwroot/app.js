@@ -187,6 +187,7 @@ async function pageHome(params, id) {
     search: params.get("search") || "",
     course: params.get("course") || "",
     tag: params.get("tag") || "",
+    sort: params.get("sort") === "helpful" ? "helpful" : "",
     page: Math.max(1, parseInt(params.get("page"), 10) || 1),
   };
 
@@ -222,6 +223,7 @@ async function pageHome(params, id) {
       search: data.get("search").trim(),
       course: data.get("course").trim(),
       tag: data.get("tag").trim().replace(/^#/, ""),
+      sort: filters.sort,
       page: 1,
     }));
   });
@@ -230,6 +232,7 @@ async function pageHome(params, id) {
   if (filters.search) query.set("search", filters.search);
   if (filters.course) query.set("courseCode", filters.course);
   if (filters.tag) query.set("tag", filters.tag);
+  if (filters.sort) query.set("sort", filters.sort);
 
   const results = document.getElementById("results");
   let data;
@@ -261,7 +264,12 @@ async function pageHome(params, id) {
   results.innerHTML = `
     <div class="results-head">
       <h2>${filtered ? `${count} found` : `All notes (${data.totalCount})`}</h2>
-      ${filtered ? `<a href="#/">Clear search</a>` : ""}
+      <p class="sort">
+        <span class="muted">Show first:</span>
+        <a href="#${homeAddress({ ...filters, sort: "", page: 1 })}" ${filters.sort ? "" : 'aria-current="true"'}>Newest</a>
+        <a href="#${homeAddress({ ...filters, sort: "helpful", page: 1 })}" ${filters.sort ? 'aria-current="true"' : ""}>Most helpful</a>
+        ${filtered ? `<a class="clear" href="#${homeAddress({ sort: filters.sort })}">Clear search</a>` : ""}
+      </p>
     </div>
     <ul class="note-list">
       ${data.items.map(noteRow).join("")}
@@ -274,11 +282,12 @@ async function pageHome(params, id) {
       </nav>` : ""}`;
 }
 
-function homeAddress({ search, course, tag, page }) {
+function homeAddress({ search, course, tag, sort, page }) {
   const query = new URLSearchParams();
   if (search) query.set("search", search);
   if (course) query.set("course", course);
   if (tag) query.set("tag", tag);
+  if (sort) query.set("sort", sort);
   if (page && page > 1) query.set("page", page);
   const text = query.toString();
   return text ? `/?${text}` : "/";
@@ -291,7 +300,7 @@ function noteRow(note) {
       <a href="#/note/${esc(note.id)}">
         ${note.courseCode ? `<span class="course">${esc(note.courseCode)}</span>` : `<span></span>`}
         <span class="note-title">${esc(note.title)}</span>
-        <span class="note-meta">${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span>
+        <span class="note-meta">${note.helpfulCount > 0 ? `<strong>${note.helpfulCount} helpful</strong>, ` : ""}${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span>
         ${tags ? `<span class="note-tags">${tags}</span>` : ""}
       </a>
     </li>`;
@@ -346,14 +355,55 @@ async function pageNote(noteId, id) {
       </header>
       <div class="ruled">${esc(note.body)}</div>
     </article>
+    <div class="helpful" id="helpful"></div>
     <div class="note-actions" id="note-actions">${actions}</div>
     <div id="report-area"></div>`;
+
+  renderHelpful(note, isAuthor);
 
   const deleteButton = document.getElementById("delete");
   if (deleteButton) deleteButton.addEventListener("click", () => confirmDelete(note));
 
   const reportToggle = document.getElementById("report-toggle");
   if (reportToggle) reportToggle.addEventListener("click", () => showReportForm(note));
+}
+
+// The "helpful" line under a note: a count for everyone, and a button for
+// logged-in readers who didn't write the note.
+function renderHelpful(note, isAuthor) {
+  const area = document.getElementById("helpful");
+  const user = session.get();
+  const count = note.helpfulCount;
+  const summary = count === 0
+    ? "No one has marked this helpful yet."
+    : `${count} ${count === 1 ? "student" : "students"} found this helpful.`;
+
+  let control = "";
+  if (!user) {
+    control = `<a href="#/login?next=${encodeURIComponent(`/note/${note.id}`)}">Log in to mark it helpful</a>`;
+  } else if (!isAuthor) {
+    control = `<button type="button" class="btn ${note.markedHelpfulByMe ? "btn-marked" : ""}" id="helpful-button"
+      aria-pressed="${note.markedHelpfulByMe}">${note.markedHelpfulByMe ? "Marked helpful" : "Mark as helpful"}</button>`;
+  }
+
+  area.innerHTML = `${control}<span class="muted" role="status">${summary}</span>`;
+
+  const button = document.getElementById("helpful-button");
+  if (!button) return;
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      const result = await api(`/materials/${encodeURIComponent(note.id)}/helpful`, {
+        method: note.markedHelpfulByMe ? "DELETE" : "PUT",
+      });
+      note.helpfulCount = result.helpfulCount;
+      note.markedHelpfulByMe = result.markedHelpfulByMe;
+      renderHelpful(note, isAuthor);
+      document.getElementById("helpful-button").focus();
+    } catch (error) {
+      area.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    }
+  });
 }
 
 // Deleting asks a second time, in the page, before anything is removed.

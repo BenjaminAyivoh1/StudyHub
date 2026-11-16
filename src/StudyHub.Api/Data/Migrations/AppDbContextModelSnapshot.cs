@@ -37,6 +37,24 @@ namespace StudyHub.Api.Data.Migrations
                     b.ToTable("MaterialTag");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
+                {
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("MaterialId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("HelpfulVotes");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.Material", b =>
                 {
                     b.Property<Guid>("Id")
@@ -173,6 +191,23 @@ namespace StudyHub.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.Material", "Material")
+                        .WithMany("HelpfulVotes")
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyHub.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.Material", b =>
                 {
                     b.HasOne("StudyHub.Api.Domain.User", "Author")
@@ -203,6 +238,8 @@ namespace StudyHub.Api.Data.Migrations
 
             modelBuilder.Entity("StudyHub.Api.Domain.Material", b =>
                 {
+                    b.Navigation("HelpfulVotes");
+
                     b.Navigation("Reports");
                 });
 

@@ -20,4 +20,5 @@ public class Material
 
     public List<Tag> Tags { get; set; } = new();
     public List<Report> Reports { get; set; } = new();
+    public List<HelpfulVote> HelpfulVotes { get; set; } = new();
 }

@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<HelpfulVote> HelpfulVotes => Set<HelpfulVote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +54,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(r => r.ReporterId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<HelpfulVote>(e =>
+        {
+            // The key is the pair (note, student), so the database itself
+            // stops one student voting twice on the same note.
+            e.HasKey(v => new { v.MaterialId, v.UserId });
+
+            e.HasOne(v => v.Material)
+                .WithMany(m => m.HelpfulVotes)
+                .HasForeignKey(v => v.MaterialId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

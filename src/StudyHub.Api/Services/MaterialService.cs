@@ -9,11 +9,13 @@ namespace StudyHub.Api.Services;
 public interface IMaterialService
 {
     Task<PagedResult<MaterialSummary>> SearchAsync(MaterialQuery query, CancellationToken ct = default);
-    Task<MaterialResponse> GetAsync(Guid id, CancellationToken ct = default);
+    Task<MaterialResponse> GetAsync(Guid id, Guid? userId = null, CancellationToken ct = default);
     Task<MaterialResponse> CreateAsync(Guid userId, MaterialRequest request, CancellationToken ct = default);
     Task<MaterialResponse> UpdateAsync(Guid userId, Guid id, MaterialRequest request, CancellationToken ct = default);
     Task DeleteAsync(Guid userId, Guid id, CancellationToken ct = default);
     Task ReportAsync(Guid userId, Guid id, ReportRequest request, CancellationToken ct = default);
+    Task<HelpfulResponse> MarkHelpfulAsync(Guid userId, Guid id, CancellationToken ct = default);
+    Task<HelpfulResponse> UnmarkHelpfulAsync(Guid userId, Guid id, CancellationToken ct = default);
 }
 
 public class MaterialService(AppDbContext db) : IMaterialService
@@ -48,8 +50,13 @@ public class MaterialService(AppDbContext db) : IMaterialService
 
         var totalCount = await query.CountAsync(ct);
 
-        var items = await query
-            .OrderByDescending(m => m.CreatedAtUtc)
+        // "helpful" puts the most helpful notes first; anything else means newest first.
+        var mostHelpfulFirst = string.Equals(q.Sort, "helpful", StringComparison.OrdinalIgnoreCase);
+        var ordered = mostHelpfulFirst
+            ? query.OrderByDescending(m => m.HelpfulVotes.Count).ThenByDescending(m => m.CreatedAtUtc)
+            : query.OrderByDescending(m => m.CreatedAtUtc);
+
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(m => new MaterialSummary(
@@ -58,13 +65,15 @@ public class MaterialService(AppDbContext db) : IMaterialService
                 m.CourseCode,
                 m.Tags.Select(t => t.Name).OrderBy(n => n).ToList(),
                 m.Author.DisplayName,
-                m.CreatedAtUtc))
+                m.CreatedAtUtc,
+                m.HelpfulVotes.Count))
             .ToListAsync(ct);
 
         return new PagedResult<MaterialSummary>(items, page, pageSize, totalCount);
     }
 
-    public async Task<MaterialResponse> GetAsync(Guid id, CancellationToken ct = default)
+    /// <param name="userId">The signed-in user, or null for a visitor. Used to say whether they marked the note helpful.</param>
+    public async Task<MaterialResponse> GetAsync(Guid id, Guid? userId = null, CancellationToken ct = default)
     {
         var material = await db.Materials
             .AsNoTracking()
@@ -73,7 +82,11 @@ public class MaterialService(AppDbContext db) : IMaterialService
             .FirstOrDefaultAsync(m => m.Id == id, ct)
             ?? throw new NotFoundException("Material not found.");
 
-        return ToResponse(material);
+        var helpfulCount = await CountHelpfulAsync(id, ct);
+        var markedByMe = userId is Guid me
+                         && await db.HelpfulVotes.AnyAsync(v => v.MaterialId == id && v.UserId == me, ct);
+
+        return ToResponse(material, helpfulCount, markedByMe);
     }
 
     public async Task<MaterialResponse> CreateAsync(Guid userId, MaterialRequest request, CancellationToken ct = default)
@@ -90,7 +103,7 @@ public class MaterialService(AppDbContext db) : IMaterialService
         db.Materials.Add(material);
         await db.SaveChangesAsync(ct);
 
-        return await GetAsync(material.Id, ct);
+        return await GetAsync(material.Id, userId, ct);
     }
 
     public async Task<MaterialResponse> UpdateAsync(Guid userId, Guid id, MaterialRequest request, CancellationToken ct = default)
@@ -116,7 +129,7 @@ public class MaterialService(AppDbContext db) : IMaterialService
 
         await db.SaveChangesAsync(ct);
 
-        return await GetAsync(material.Id, ct);
+        return await GetAsync(material.Id, userId, ct);
     }
 
     public async Task DeleteAsync(Guid userId, Guid id, CancellationToken ct = default)
@@ -157,7 +170,61 @@ public class MaterialService(AppDbContext db) : IMaterialService
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Marks a note as helpful. Doing it twice changes nothing.</summary>
+    public async Task<HelpfulResponse> MarkHelpfulAsync(Guid userId, Guid id, CancellationToken ct = default)
+    {
+        var authorId = await db.Materials
+            .Where(m => m.Id == id)
+            .Select(m => (Guid?)m.AuthorId)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Material not found.");
+
+        if (authorId == userId)
+        {
+            throw new ForbiddenException("You can't mark your own note as helpful.");
+        }
+
+        var alreadyMarked = await db.HelpfulVotes.AnyAsync(v => v.MaterialId == id && v.UserId == userId, ct);
+        if (!alreadyMarked)
+        {
+            var vote = new HelpfulVote { MaterialId = id, UserId = userId };
+            db.HelpfulVotes.Add(vote);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // Two clicks arrived at the same moment and the other one saved first. That's fine.
+                db.Entry(vote).State = EntityState.Detached;
+            }
+        }
+
+        return new HelpfulResponse(await CountHelpfulAsync(id, ct), true);
+    }
+
+    /// <summary>Removes the user's helpful mark. Doing it twice changes nothing.</summary>
+    public async Task<HelpfulResponse> UnmarkHelpfulAsync(Guid userId, Guid id, CancellationToken ct = default)
+    {
+        if (!await db.Materials.AnyAsync(m => m.Id == id, ct))
+        {
+            throw new NotFoundException("Material not found.");
+        }
+
+        var vote = await db.HelpfulVotes.FirstOrDefaultAsync(v => v.MaterialId == id && v.UserId == userId, ct);
+        if (vote is not null)
+        {
+            db.HelpfulVotes.Remove(vote);
+            await db.SaveChangesAsync(ct);
+        }
+
+        return new HelpfulResponse(await CountHelpfulAsync(id, ct), false);
+    }
+
     // ----- helpers -----
+
+    private Task<int> CountHelpfulAsync(Guid materialId, CancellationToken ct)
+        => db.HelpfulVotes.CountAsync(v => v.MaterialId == materialId, ct);
 
     /// <summary>Finds existing tags and creates the ones that don't exist yet.</summary>
     private async Task<List<Tag>> ResolveTagsAsync(IEnumerable<string>? names, CancellationToken ct)
@@ -197,7 +264,7 @@ public class MaterialService(AppDbContext db) : IMaterialService
         return string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();
     }
 
-    private static MaterialResponse ToResponse(Material m) => new(
+    private static MaterialResponse ToResponse(Material m, int helpfulCount, bool markedHelpfulByMe) => new(
         m.Id,
         m.Title,
         m.Body,
@@ -206,6 +273,7 @@ public class MaterialService(AppDbContext db) : IMaterialService
         m.AuthorId,
         m.Author.DisplayName,
         m.CreatedAtUtc,
-        m.UpdatedAtUtc);
+        m.UpdatedAtUtc,
+        helpfulCount,
+        markedHelpfulByMe);
 }
-

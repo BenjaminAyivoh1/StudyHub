@@ -15,9 +15,11 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
         [FromQuery] MaterialQuery query, CancellationToken ct)
         => Ok(await materials.SearchAsync(query, ct));
 
+    // Anyone can read a note. If the reader is logged in, we also tell them
+    // whether they have marked it as helpful.
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<MaterialResponse>> Get(Guid id, CancellationToken ct)
-        => Ok(await materials.GetAsync(id, ct));
+        => Ok(await materials.GetAsync(id, User.GetUserIdOrNull(), ct));
 
     [Authorize]
     [HttpPost]
@@ -47,4 +49,14 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
         await materials.ReportAsync(User.GetUserId(), id, request, ct);
         return Accepted();
     }
+
+    [Authorize]
+    [HttpPut("{id:guid}/helpful")]
+    public async Task<ActionResult<HelpfulResponse>> MarkHelpful(Guid id, CancellationToken ct)
+        => Ok(await materials.MarkHelpfulAsync(User.GetUserId(), id, ct));
+
+    [Authorize]
+    [HttpDelete("{id:guid}/helpful")]
+    public async Task<ActionResult<HelpfulResponse>> UnmarkHelpful(Guid id, CancellationToken ct)
+        => Ok(await materials.UnmarkHelpfulAsync(User.GetUserId(), id, ct));
 }
