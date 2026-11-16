@@ -6,10 +6,10 @@
 
 ## Week 1: run it, understand it, make it yours
 
-- [ ] Install .NET 10 SDK, Docker, and the `dotnet-ef` tool
-- [ ] Create a **new, empty GitHub repo** and push this code (nothing reused from other projects)
-- [ ] `dotnet build` and `dotnet test`. If anything fails, fix it first. The code was written without being compiled, so expect a typo or two
-- [ ] Start Postgres, create the first migration, run the API, and click through every request in `requests.http`
+- [x] Install .NET 10 SDK, Docker, and the `dotnet-ef` tool
+- [x] Create a **new, empty GitHub repo** and push this code (nothing reused from other projects)
+- [x] `dotnet build` and `dotnet test`. If anything fails, fix it first. The code was written without being compiled, so expect a typo or two
+- [x] Start Postgres, create the first migration, run the API, and click through every request in `requests.http`
 - [ ] Read the code in this order: `Domain` -> `Data/AppDbContext` -> `Services/MaterialService` -> `Controllers`. For each file, explain it in your own words in a comment or notes file
 - [ ] Add **one test of your own** (suggestion: searching with no results returns an empty list)
 - [ ] Change one small thing without help (suggestion: add a `Description` field to materials, then a migration)
