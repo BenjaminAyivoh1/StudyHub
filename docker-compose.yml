@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: studyhub
+      POSTGRES_PASSWORD: studyhub_dev
+      POSTGRES_DB: studyhub
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studyhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=studyhub;Username=studyhub;Password=studyhub_dev
+      # Local-only default. For any real deployment set JWT_KEY to a long random secret.
+      Jwt__Key: ${JWT_KEY:-dev-only-key-change-me-0123456789abcdef}
+      Database__MigrateOnStartup: "true"
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:

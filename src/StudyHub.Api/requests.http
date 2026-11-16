@@ -1,0 +1,54 @@
+### Try the API from VS Code (REST Client extension) or Rider.
+### Run the API first: dotnet run --project src/StudyHub.Api
+
+@baseUrl = http://localhost:5080
+@token = PASTE_TOKEN_HERE
+
+### 1. Register (copy the token from the response into @token below)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "ama@example.com",
+  "displayName": "Ama",
+  "password": "a-strong-password"
+}
+
+### 2. Log in
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "ama@example.com",
+  "password": "a-strong-password"
+}
+
+### 3. Create a note
+POST {{baseUrl}}/api/materials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Operating Systems: scheduling cheat sheet",
+  "body": "FCFS, SJF, Round Robin and priority scheduling explained with small examples.",
+  "courseCode": "DCIT 301",
+  "tags": ["os", "scheduling"]
+}
+
+### 4. List and search
+GET {{baseUrl}}/api/materials?search=scheduling&tag=os&page=1&pageSize=10
+
+### 5. Get one (replace the id)
+GET {{baseUrl}}/api/materials/b702f814-2225-4957-977c-98034ed92205
+
+### 6. Report a note
+POST {{baseUrl}}/api/materials/b702f814-2225-4957-977c-98034ed92205/reports
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "This looks copied from a textbook."
+}
+
+### Health check
+GET {{baseUrl}}/health

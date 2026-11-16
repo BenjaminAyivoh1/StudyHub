@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/StudyHub.Api/StudyHub.Api.csproj" />
+  <Project Path="tests/StudyHub.Tests/StudyHub.Tests.csproj" />
+</Solution>
