@@ -3,8 +3,9 @@
 
 @baseUrl = http://localhost:5080
 @token = PASTE_TOKEN_HERE
+@noteId = PASTE_NOTE_ID_HERE
 
-### 1. Register (copy the token from the response into @token below)
+### 1. Register (then copy the token from the response into @token above)
 POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
 
@@ -23,7 +24,7 @@ Content-Type: application/json
   "password": "a-strong-password"
 }
 
-### 3. Create a note
+### 3. Create a note (then copy its id into @noteId above)
 POST {{baseUrl}}/api/materials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -31,18 +32,35 @@ Authorization: Bearer {{token}}
 {
   "title": "Operating Systems: scheduling cheat sheet",
   "body": "FCFS, SJF, Round Robin and priority scheduling explained with small examples.",
-  "courseCode": "DCIT 301",
+  "courseCode": "CSC 301",
   "tags": ["os", "scheduling"]
 }
 
-### 4. List and search
+### 4. List and search (add sort=helpful to put the most helpful first)
 GET {{baseUrl}}/api/materials?search=scheduling&tag=os&page=1&pageSize=10
 
-### 5. Get one (replace the id)
-GET {{baseUrl}}/api/materials/b702f814-2225-4957-977c-98034ed92205
+### 5. Get one note
+GET {{baseUrl}}/api/materials/{{noteId}}
+Authorization: Bearer {{token}}
 
-### 6. Report a note
-POST {{baseUrl}}/api/materials/b702f814-2225-4957-977c-98034ed92205/reports
+### 6. Mark a note as helpful (not your own)
+PUT {{baseUrl}}/api/materials/{{noteId}}/helpful
+Authorization: Bearer {{token}}
+
+### 7. Comment on a note
+POST {{baseUrl}}/api/materials/{{noteId}}/comments
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "body": "Is Round Robin preemptive?"
+}
+
+### 8. List a note's comments
+GET {{baseUrl}}/api/materials/{{noteId}}/comments
+
+### 9. Report a note
+POST {{baseUrl}}/api/materials/{{noteId}}/reports
 Content-Type: application/json
 Authorization: Bearer {{token}}
 

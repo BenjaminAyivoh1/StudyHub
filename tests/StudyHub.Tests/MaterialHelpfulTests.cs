@@ -7,7 +7,7 @@ namespace StudyHub.Tests;
 public class MaterialHelpfulTests
 {
     private static MaterialRequest Note(string title)
-        => new(title, "Some useful notes for revision before the exam.", "DCIT 301", new List<string>());
+        => new(title, "Some useful notes for revision before the exam.", "CSC 301", new List<string>());
 
     [Fact]
     public async Task Marking_a_note_helpful_raises_the_count_and_remembers_who_did_it()

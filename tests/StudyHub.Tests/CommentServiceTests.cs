@@ -7,7 +7,7 @@ namespace StudyHub.Tests;
 public class CommentServiceTests
 {
     private static MaterialRequest Note(string title, string? body = null)
-        => new(title, body ?? "Some useful notes for revision before the exam.", "DCIT 301", new List<string>());
+        => new(title, body ?? "Some useful notes for revision before the exam.", "CSC 301", new List<string>());
 
     [Fact]
     public async Task Adding_a_comment_saves_it_with_the_author_name()

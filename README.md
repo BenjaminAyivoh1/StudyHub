@@ -8,12 +8,13 @@ A study-notes platform for university students. Students write and share notes, 
 
 - Sign up and log in (JWT authentication, PBKDF2 password hashing)
 - Create, edit and delete your own notes
-- Tag notes and tie them to a course code (for example `DCIT 305`)
+- Tag notes and tie them to a course code (for example `CSC 305`)
 - Search by text, tag or course, with pagination
 - Mark notes as helpful, and sort by most helpful
 - Comment on notes
 - Report a note (one open report per user per note)
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
+- 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account
 - Health check at `/health`
 
 ## Tech stack
@@ -55,6 +56,19 @@ Run everything in containers instead:
 ```bash
 docker compose up --build        # API on http://localhost:8080
 ```
+
+## Settings for a hosting provider
+
+Set these as environment variables on the host. None of them belong in Git.
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | The database address from your provider, for example `postgresql://user:password@host/dbname` |
+| `Jwt__Key` | A long random secret (32 characters or more) |
+| `Database__MigrateOnStartup` | `true`, so the tables are created on first start |
+| `Database__SeedSampleNotes` | `true`, to add the starter notes once |
+
+The app reads the `PORT` variable if the host sets one.
 
 ## API
 

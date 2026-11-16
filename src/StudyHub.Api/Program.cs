@@ -18,9 +18,23 @@ if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
         "Jwt:Key must be set to a random secret of at least 32 characters (use the Jwt__Key environment variable).");
 }
 
+// The database address comes from ConnectionStrings:Default, or from DATABASE_URL on a hosting provider.
+var databaseAddress = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(databaseAddress))
+{
+    databaseAddress = builder.Configuration["DATABASE_URL"];
+}
+var connectionString = DatabaseUrl.ToConnectionString(databaseAddress ?? string.Empty);
+
+// Hosting providers choose the port and pass it in the PORT variable.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 // ----- services -----
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
@@ -67,6 +81,20 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", false))
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
+
+// Add the starter notes once, so a new site isn't empty. On by default in Development;
+// on a hosting provider set Database__SeedSampleNotes=true.
+if (app.Configuration.GetValue("Database:SeedSampleNotes", app.Environment.IsDevelopment()))
+{
+    using var scope = app.Services.CreateScope();
+    var added = await SampleData.SeedAsync(
+        scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+        scope.ServiceProvider.GetRequiredService<IPasswordHasher>());
+    if (added > 0)
+    {
+        app.Logger.LogInformation("Added {Count} starter notes.", added);
+    }
 }
 
 // Serve the website (wwwroot/index.html, styles.css, app.js).

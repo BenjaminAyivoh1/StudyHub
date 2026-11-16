@@ -248,7 +248,7 @@ async function pageHome(params, id) {
         </label>
         <label class="field">
           <span>Course code</span>
-          <input name="course" value="${esc(filters.course)}" placeholder="DCIT 301" maxlength="20">
+          <input name="course" value="${esc(filters.course)}" placeholder="CSC 301" maxlength="20">
         </label>
         <label class="field">
           <span>Tag</span>
@@ -651,7 +651,7 @@ async function pageEditor(noteId, id) {
       <div class="form-row">
         <label class="field">
           <span>Course code</span>
-          <input name="courseCode" maxlength="20" value="${esc(note.courseCode || "")}" placeholder="DCIT 301">
+          <input name="courseCode" maxlength="20" value="${esc(note.courseCode || "")}" placeholder="CSC 301">
           <small>Optional</small>
         </label>
         <label class="field">

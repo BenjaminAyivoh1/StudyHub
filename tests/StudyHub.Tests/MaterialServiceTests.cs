@@ -9,7 +9,7 @@ public class MaterialServiceTests
     private static MaterialRequest Request(
         string title = "Operating Systems scheduling notes",
         string body = "FCFS, SJF and Round Robin explained with small examples.",
-        string? courseCode = "dcit 301",
+        string? courseCode = "csc 301",
         params string[] tags)
         => new(title, body, courseCode, tags.ToList());
 
@@ -23,7 +23,7 @@ public class MaterialServiceTests
         var created = await service.CreateAsync(
             user.Id, Request(tags: new[] { " OS ", "Notes", "os", "" }));
 
-        Assert.Equal("DCIT 301", created.CourseCode);
+        Assert.Equal("CSC 301", created.CourseCode);
         Assert.Equal(new[] { "notes", "os" }, created.Tags);
         Assert.Equal("Ama", created.AuthorName);
     }
@@ -49,14 +49,14 @@ public class MaterialServiceTests
         var service = new MaterialService(db);
 
         await service.CreateAsync(user.Id, Request(
-            title: "Scheduling cheat sheet", courseCode: "DCIT 301", tags: new[] { "os" }));
+            title: "Scheduling cheat sheet", courseCode: "CSC 301", tags: new[] { "os" }));
         await service.CreateAsync(user.Id, Request(
             title: "HTML and CSS basics", body: "Tags, selectors and the box model explained.",
-            courseCode: "DCIT 305", tags: new[] { "web" }));
+            courseCode: "CSC 305", tags: new[] { "web" }));
 
         var byText = await service.SearchAsync(new MaterialQuery(Search: "scheduling"));
         var byTag = await service.SearchAsync(new MaterialQuery(Tag: "WEB"));
-        var byCourse = await service.SearchAsync(new MaterialQuery(CourseCode: "dcit 301"));
+        var byCourse = await service.SearchAsync(new MaterialQuery(CourseCode: "csc 301"));
 
         Assert.Equal("Scheduling cheat sheet", Assert.Single(byText.Items).Title);
         Assert.Equal("HTML and CSS basics", Assert.Single(byTag.Items).Title);

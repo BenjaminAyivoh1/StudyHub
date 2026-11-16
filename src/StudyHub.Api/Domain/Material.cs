@@ -9,7 +9,7 @@ public class Material
     /// <summary>The notes themselves (plain text or Markdown).</summary>
     public string Body { get; set; } = string.Empty;
 
-    /// <summary>Optional course code such as "DCIT 305".</summary>
+    /// <summary>Optional course code such as "CSC 305".</summary>
     public string? CourseCode { get; set; }
 
     public Guid AuthorId { get; set; }
