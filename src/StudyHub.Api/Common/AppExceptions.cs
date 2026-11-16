@@ -9,6 +9,8 @@ public abstract class AppException(string message, int statusCode) : Exception(m
     public int StatusCode { get; } = statusCode;
 }
 
+public class BadRequestException(string message) : AppException(message, StatusCodes.Status400BadRequest);
+
 public class UnauthorizedException(string message) : AppException(message, StatusCodes.Status401Unauthorized);
 
 public class ForbiddenException(string message) : AppException(message, StatusCodes.Status403Forbidden);

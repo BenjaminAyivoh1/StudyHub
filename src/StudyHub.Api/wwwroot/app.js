@@ -22,6 +22,21 @@ const session = (() => {
   } catch {
     current = null;
   }
+  // Every tab of the site shares one login. When another tab logs in or out,
+  // this tab is told, and redraws so it never shows the wrong person's page.
+  window.addEventListener("storage", (event) => {
+    if (event.key !== KEY) return;
+    const before = current ? current.userId : null;
+    try {
+      current = JSON.parse(event.newValue);
+    } catch {
+      current = null;
+    }
+    const after = current ? current.userId : null;
+    if (before !== after) route();
+    else renderNav();
+  });
+
   return {
     get: () => current,
     set(value) {
@@ -205,11 +220,13 @@ function renderNav() {
   const user = session.get();
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
+       <a href="#/quizzes">Quizzes</a>
        ${user.isAdmin ? `<a href="#/admin">Reports</a>` : ""}
        <a class="btn btn-primary" href="#/new">Write a note</a>
        <span class="who">${avatar(user.displayName)}<span>${esc(user.displayName)}</span></span>
        <button type="button" class="link-button" id="logout">Log out</button>`
     : `<a href="#/">Browse notes</a>
+       <a href="#/join">Join a quiz</a>
        <a href="#/login">Log in</a>
        <a class="btn btn-primary" href="#/signup">Sign up</a>`;
 
@@ -886,6 +903,7 @@ function route() {
   const id = ++renderId;
   const { parts, params } = readAddress();
   document.title = "StudyHub";
+  leaveQuizPage(); // close any live quiz connection from the page we are leaving
   renderNav();
   window.scrollTo(0, 0);
 
@@ -904,6 +922,16 @@ function route() {
       return pageAuth("signup", params);
     case "admin":
       return pageAdmin(id);
+    case "quizzes":
+      return pageQuizzes(id);
+    case "quiz":
+      if (parts[1] === "new") return pageQuizEditor(null, id);
+      if (parts[1] === "edit" && parts[2]) return pageQuizEditor(parts[2], id);
+      return go("/quizzes");
+    case "host":
+      return parts[1] ? pageHost(parts[1], id) : go("/quizzes");
+    case "join":
+      return pageJoin(params);
     default:
       app.innerHTML = `
         <h1>Page not found</h1>

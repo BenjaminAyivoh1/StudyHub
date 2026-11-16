@@ -778,6 +778,465 @@ textarea.short {
   gap: 1rem;
 }
 
+/* ----- live quizzes ----- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+select {
+  font: inherit;
+  color: var(--ink);
+  padding: 0.5rem 2rem 0.5rem 0.25rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+select:focus-visible {
+  outline: none;
+  border-bottom-color: var(--margin-red);
+  background-color: #fffbe0;
+}
+
+/* The four answer colours. Each also carries a letter, so colour is never the only clue. */
+.option-0 { --option: #3b6fd9; --option-text: #ffffff; }
+.option-1 { --option: #d2414f; --option-text: #ffffff; }
+.option-2 { --option: #1f7a5c; --option-text: #ffffff; }
+.option-3 { --option: #ffe35a; --option-text: #17233f; }
+
+.letter {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.option-3 .letter {
+  background: rgba(23, 35, 63, 0.14);
+}
+
+/* My quizzes */
+
+.quiz-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.quiz-list {
+  display: grid;
+  gap: 1rem;
+  max-width: 52rem;
+  margin-top: 1.75rem;
+}
+
+.quiz-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.quiz-item h2 {
+  font-size: 1.375rem;
+}
+
+/* Quiz editor */
+
+.question-edit {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--edge);
+  border-top: 3px solid var(--margin-red);
+  border-radius: 10px;
+}
+
+.question-edit legend {
+  padding: 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.field-label {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+#add-question {
+  justify-self: start;
+}
+
+.answer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.answer-pick {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  cursor: pointer;
+}
+
+.answer-pick input {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.answer-row .letter {
+  background: var(--ink);
+  color: #fff;
+}
+
+.question-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.remove-question {
+  color: var(--danger);
+}
+
+/* Host screen: a dark stage, readable from the back of a room */
+
+.stage {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1.25rem;
+  min-height: 32rem;
+  padding: 2.5rem 2rem;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+  box-shadow: var(--shadow-sheet);
+}
+
+.stage a,
+.stage .muted {
+  color: #c9d4ea;
+}
+
+.stage .btn {
+  color: var(--ink);
+}
+
+.stage .error {
+  text-align: left;
+}
+
+.stage-label {
+  color: #c9d4ea;
+  font-size: 1.125rem;
+}
+
+.stage-label strong {
+  color: #fff;
+}
+
+.game-code {
+  padding: 0.25rem 1.5rem;
+  border-radius: 14px;
+  background: var(--highlight);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 2rem + 8vw, 6rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+}
+
+.stage-title {
+  font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+}
+
+.stage-question {
+  max-width: 46rem;
+  font-size: clamp(1.75rem, 1.1rem + 2.8vw, 3rem);
+}
+
+.player-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-chips li {
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+}
+
+.btn-big {
+  padding: 0.9rem 1.75rem;
+  font-size: 1.1875rem;
+}
+
+.btn-accent[disabled] {
+  cursor: not-allowed;
+}
+
+.stage-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 52rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: var(--option);
+  color: var(--option-text);
+  font-size: 1.1875rem;
+  font-weight: 600;
+}
+
+.option-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.option-count {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.option.is-wrong {
+  opacity: 0.45;
+}
+
+.option.is-correct {
+  outline: 4px solid #fff;
+  outline-offset: 2px;
+}
+
+.stage-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem 1.5rem;
+  font-size: 1.125rem;
+}
+
+.countdown {
+  display: inline-grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: var(--highlight);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.stage-board {
+  width: 100%;
+  max-width: 28rem;
+  text-align: left;
+}
+
+.stage-board h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.stage-board-final {
+  max-width: 34rem;
+}
+
+.leaderboard {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: place;
+}
+
+.leaderboard li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+  counter-increment: place;
+}
+
+.leaderboard li::before {
+  content: counter(place);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--highlight);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.leaderboard-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Player screen: big targets for thumbs */
+
+.play {
+  display: grid;
+  gap: 1rem;
+  max-width: 38rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.play .stage-label {
+  color: var(--ink-soft);
+}
+
+.play .lede {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.play-question {
+  font-size: clamp(1.5rem, 1.1rem + 2vw, 2.25rem);
+}
+
+.answer-buttons {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.answer {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 4.25rem;
+  padding: 0.9rem 1.1rem;
+  border: 0;
+  border-radius: 14px;
+  background: var(--option);
+  color: var(--option-text);
+  font: inherit;
+  font-size: 1.1875rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.answer[disabled] {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.answer.is-chosen {
+  opacity: 1;
+  outline: 4px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.play-status {
+  min-height: 1.6rem;
+  font-weight: 600;
+}
+
+.result-heading.is-right {
+  color: #1f7a5c;
+}
+
+.result-heading.is-wrong {
+  color: var(--danger);
+}
+
+.result-points {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.score-line {
+  font-size: 1.1875rem;
+}
+
+.play .stage-board {
+  margin: 0.5rem auto 0;
+}
+
+.play .leaderboard li {
+  background: var(--paper);
+  border: 1px solid var(--edge);
+}
+
+.play .form-actions {
+  justify-content: center;
+}
+
+.code-input {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 /* ----- admin: reported notes ----- */
 
 .reports {
@@ -903,6 +1362,19 @@ textarea.short {
 
   .sheet::before {
     left: 1.5rem;
+  }
+
+  .stage {
+    min-height: 26rem;
+    padding: 1.75rem 1rem;
+  }
+
+  .stage-options {
+    grid-template-columns: 1fr;
+  }
+
+  .question-edit {
+    padding: 1rem;
   }
 }
 

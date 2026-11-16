@@ -121,6 +121,78 @@ namespace StudyHub.Api.Data.Migrations
                     b.ToTable("Materials");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.Quiz", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CreatedAtUtc");
+
+                    b.ToTable("Quizzes");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.QuizQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CorrectIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OptionA")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OptionB")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OptionC")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OptionD")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("QuizId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Seconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizId");
+
+                    b.ToTable("QuizQuestions");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.Report", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +339,28 @@ namespace StudyHub.Api.Data.Migrations
                     b.Navigation("Author");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.Quiz", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.QuizQuestion", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.Quiz", "Quiz")
+                        .WithMany("Questions")
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Quiz");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.Report", b =>
                 {
                     b.HasOne("StudyHub.Api.Domain.Material", "Material")
@@ -291,6 +385,11 @@ namespace StudyHub.Api.Data.Migrations
                     b.Navigation("HelpfulVotes");
 
                     b.Navigation("Reports");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.Quiz", b =>
+                {
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("StudyHub.Api.Domain.User", b =>

@@ -1,8 +1,10 @@
 # StudyHub
 
-A study-notes platform for university students. Students write and share notes, tag them by course, search them, and report anything that shouldn't be there. A live quiz mode comes in Phase 2.
+A study-notes platform for university students. Students write and share notes, organise them by topic and course, search them, and report anything that shouldn't be there. They can also run live quizzes that classmates join from their phones.
 
-> **Status:** Phase 1 (notes library) in progress.
+**Live site:** https://studyhub-3ek7.onrender.com (free hosting, so the first load can take a minute)
+
+> **Status:** Phase 1 (notes library) and Phase 2 (live quizzes) are built. Next: more real users, then Phase 3.
 
 ## What it does today
 
@@ -14,6 +16,7 @@ A study-notes platform for university students. Students write and share notes, 
 - Comment on notes
 - Report a note (one open report per user per note)
 - An admin page for reviewing reports and removing notes or comments
+- Live quizzes: write multiple-choice questions, host a game, and let classmates join on their phones with a code and a nickname. Faster right answers score more, with a live leaderboard
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
 - 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account. They are organised by topic with no course code, since codes differ between universities; students add their own
 - Health check at `/health`
@@ -92,6 +95,11 @@ The app reads the `PORT` variable if the host sets one.
 | POST | `/api/materials/{id}/comments` | yes | Add a comment |
 | DELETE | `/api/materials/{id}/comments/{commentId}` | yes (comment author only) | Delete a comment |
 | GET | `/api/auth/me` | yes | Who is logged in, and whether they are an admin |
+| GET | `/api/quizzes/mine` | yes | List your quizzes |
+| GET | `/api/quizzes/{id}` | yes (owner only) | One quiz, with its answers |
+| POST | `/api/quizzes` | yes | Create a quiz |
+| PUT | `/api/quizzes/{id}` | yes (owner only) | Replace a quiz |
+| DELETE | `/api/quizzes/{id}` | yes (owner only) | Delete a quiz |
 | GET | `/api/admin/reports` | admin | List open reports |
 | POST | `/api/admin/reports/{id}/dismiss` | admin | Keep the note and close the report |
 | DELETE | `/api/admin/materials/{id}` | admin | Remove any note |
@@ -99,18 +107,31 @@ The app reads the `PORT` variable if the host sets one.
 
 Errors come back as standard problem-details JSON (`401`, `403`, `404`, `409`, `400` for validation).
 
+## How a live quiz works
+
+Playing a quiz uses SignalR instead of ordinary requests. Each browser keeps a connection open to `/hubs/quiz`, so the server can push a new question or the scores to every phone at once.
+
+- `Live/QuizGame.cs` holds the rules: who can join, how answers are scored, who is winning. It has no web or database code, so the tests call it directly.
+- `Live/GameRegistry.cs` keeps the running games in memory and hands out the six-character codes.
+- `Live/QuizHub.cs` passes messages between the host, the players and the game.
+
+Running games are kept in memory, not in the database. That is simple and fast, and it means a game ends if the server restarts or the host leaves. Quizzes themselves are saved in the database.
+
+Scoring: a right answer earns 500 points plus up to 500 more for speed. The server measures the time, so a player cannot claim to have answered faster than they did.
+
 ## How the code is organised
 
 ```
 src/StudyHub.Api
   Controllers/   thin HTTP layer: read the request, call a service, return a result
   Services/      the actual rules (who may edit what, how search works)
-  Domain/        entities: User, Material, Tag, Report, HelpfulVote, Comment
+  Domain/        entities: User, Material, Tag, Report, HelpfulVote, Comment, Quiz, QuizQuestion
   Data/          EF Core DbContext and migrations
   Security/      password hashing and JWT creation
   Contracts/     request and response shapes (what the API accepts and returns)
+  Live/          live quiz games: the rules, the registry of running games, and the SignalR hub
   Common/        exceptions and the handler that turns them into HTTP responses
-  wwwroot/       the website: index.html, styles.css, app.js
+  wwwroot/       the website: index.html, styles.css, app.js (notes) and quiz.js (quizzes)
 tests/StudyHub.Tests   unit tests for the services and the password hasher
 ```
 
@@ -124,8 +145,8 @@ tests/StudyHub.Tests   unit tests for the services and the password hasher
 
 ## Roadmap
 
-- [ ] Phase 1: notes library, deployed with real users (see `docs/PLAN.md`)
-- [ ] Phase 2: live quiz with SignalR (teacher creates a quiz, classmates join with a code)
+- [x] Phase 1: notes library, built and deployed (still to do: grow real users)
+- [x] Phase 2: live quiz with SignalR (a host writes a quiz, classmates join with a code)
 - [ ] Phase 3: rate limiting on the public endpoints
 - [ ] Phase 4: study assistant that generates practice questions from notes
 

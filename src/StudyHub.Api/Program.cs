@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StudyHub.Api.Common;
 using StudyHub.Api.Data;
+using StudyHub.Api.Live;
 using StudyHub.Api.Security;
 using StudyHub.Api.Services;
 
@@ -42,6 +43,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMaterialService, MaterialService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+
+// Live quizzes: SignalR keeps a connection open to each browser, and the registry holds the running games.
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<GameRegistry>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -57,6 +63,22 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        // A live connection can't send the login token in a header, so the browser
+        // puts it in the address instead. Accept it there, but only for the hubs.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 // Admins are the people whose email is listed in Admin:Emails. The "Admin" policy protects the admin routes.
@@ -112,6 +134,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<QuizHub>("/hubs/quiz");
 app.MapHealthChecks("/health");
 
 app.Run();

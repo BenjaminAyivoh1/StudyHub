@@ -11,6 +11,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<HelpfulVote> HelpfulVotes => Set<HelpfulVote>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Quiz> Quizzes => Set<Quiz>();
+    public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +91,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(c => c.Author)
                 .WithMany()
                 .HasForeignKey(c => c.AuthorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Quiz>(e =>
+        {
+            e.Property(q => q.Title).HasMaxLength(200);
+            e.HasIndex(q => new { q.OwnerId, q.CreatedAtUtc });
+
+            e.HasOne(q => q.Owner)
+                .WithMany()
+                .HasForeignKey(q => q.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<QuizQuestion>(e =>
+        {
+            e.Property(q => q.Text).HasMaxLength(500);
+            e.Property(q => q.OptionA).HasMaxLength(200);
+            e.Property(q => q.OptionB).HasMaxLength(200);
+            e.Property(q => q.OptionC).HasMaxLength(200);
+            e.Property(q => q.OptionD).HasMaxLength(200);
+
+            e.HasOne(q => q.Quiz)
+                .WithMany(quiz => quiz.Questions)
+                .HasForeignKey(q => q.QuizId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
