@@ -152,4 +152,18 @@ public class MaterialServiceTests
         await Assert.ThrowsAsync<ConflictException>(() =>
             service.ReportAsync(reporter.Id, created.Id, new ReportRequest("Reporting again.")));
     }
+
+    [Fact]
+    public async Task Search_returns_no_items_when_nothing_matches()
+    {
+        await using var db = TestDb.Create();
+        var user = await TestDb.AddUserAsync(db);
+        var service = new MaterialService(db);
+        await service.CreateAsync(user.Id, Request(title: "Scheduling cheat sheet"));
+
+        var result = await service.SearchAsync(new MaterialQuery(Search: "biology"));
+
+        Assert.Empty(result.Items);
+        Assert.Equal(0, result.TotalCount);
+    }
 }
