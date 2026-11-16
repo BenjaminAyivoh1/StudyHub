@@ -208,3 +208,4 @@ public class MaterialService(AppDbContext db) : IMaterialService
         m.CreatedAtUtc,
         m.UpdatedAtUtc);
 }
+
