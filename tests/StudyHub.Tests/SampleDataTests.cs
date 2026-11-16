@@ -61,7 +61,7 @@ public class SampleDataTests
         await SampleData.SeedAsync(db, new Pbkdf2PasswordHasher());
         var service = new MaterialService(db);
 
-        var osNotes = await service.SearchAsync(new MaterialQuery(CourseCode: "csc 301"));
+        var osNotes = await service.SearchAsync(new MaterialQuery(Tag: "os"));
         var everything = await service.SearchAsync(new MaterialQuery(PageSize: 50));
 
         Assert.Equal(3, osNotes.TotalCount);
@@ -70,8 +70,27 @@ public class SampleDataTests
             Assert.InRange(note.Title.Length, 3, 200);
             Assert.InRange(note.Tags.Count, 1, 5);
             Assert.False(string.IsNullOrWhiteSpace(note.Preview));
+            Assert.Null(note.CourseCode); // organised by topic, not by course code
             Assert.Equal(SampleData.TeamName, note.AuthorName);
         });
+    }
+
+    [Fact]
+    public async Task Seeding_again_clears_course_codes_left_on_starter_notes()
+    {
+        await using var db = TestDb.Create();
+        var hasher = new Pbkdf2PasswordHasher();
+        await SampleData.SeedAsync(db, hasher);
+        foreach (var note in db.Materials)
+        {
+            note.CourseCode = "CSC 301";
+        }
+        await db.SaveChangesAsync();
+
+        await SampleData.SeedAsync(db, hasher);
+
+        Assert.Equal(0, await db.Materials.CountAsync(m => m.CourseCode != null));
+        Assert.Equal(15, await db.Materials.CountAsync());
     }
 
     [Theory]

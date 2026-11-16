@@ -14,7 +14,7 @@ A study-notes platform for university students. Students write and share notes, 
 - Comment on notes
 - Report a note (one open report per user per note)
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
-- 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account
+- 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account. They are organised by topic with no course code, since codes differ between universities; students add their own
 - Health check at `/health`
 
 ## Tech stack

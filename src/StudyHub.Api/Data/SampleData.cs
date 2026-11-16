@@ -8,19 +8,36 @@ namespace StudyHub.Api.Data;
 /// Starter notes so a new site isn't empty. They are posted by one clearly named
 /// account ("StudyHub Team") rather than by made-up students, and they come with no
 /// votes or comments, so everything visitors see from other people is real.
+/// They are organised by topic and have no course code, because course codes differ
+/// from one university to the next. Students add their own course codes to their notes.
 /// </summary>
 public static class SampleData
 {
     public const string TeamEmail = "team@studyhub.example";
     public const string TeamName = "StudyHub Team";
 
-    private sealed record SampleNote(string CourseCode, string Title, string[] Tags, int DaysAgo, string Body);
+    private sealed record SampleNote(string Title, string[] Tags, int DaysAgo, string Body);
 
     /// <summary>Adds the starter notes once. Running it again does nothing. Returns how many notes were added.</summary>
     public static async Task<int> SeedAsync(AppDbContext db, IPasswordHasher hasher, CancellationToken ct = default)
     {
-        if (await db.Users.AnyAsync(u => u.Email == TeamEmail, ct))
+        var existingTeam = await db.Users.FirstOrDefaultAsync(u => u.Email == TeamEmail, ct);
+        if (existingTeam is not null)
         {
+            // An earlier version gave the starter notes course codes. Clear any that are left.
+            var withCodes = await db.Materials
+                .Where(m => m.AuthorId == existingTeam.Id && m.CourseCode != null)
+                .ToListAsync(ct);
+            if (withCodes.Count > 0)
+            {
+                foreach (var material in withCodes)
+                {
+                    material.CourseCode = null;
+                }
+
+                await db.SaveChangesAsync(ct);
+            }
+
             return 0;
         }
 
@@ -44,7 +61,7 @@ public static class SampleData
             {
                 Title = note.Title,
                 Body = note.Body.Trim(),
-                CourseCode = note.CourseCode,
+                CourseCode = null,
                 AuthorId = team.Id,
                 Author = team,
                 CreatedAtUtc = createdAt,
@@ -72,7 +89,7 @@ public static class SampleData
 
     private static readonly SampleNote[] Notes =
     [
-        new("CSC 301", "CPU scheduling: FCFS, SJF and Round Robin", ["os", "scheduling"], 2, """
+        new("CPU scheduling: FCFS, SJF and Round Robin", ["os", "scheduling"], 2, """
             CPU scheduling decides which ready process runs next.
 
             FCFS (first come, first served)
@@ -89,7 +106,7 @@ public static class SampleData
             SJF runs them as 1, 3, 6. Waiting times: 0, 1, 4. Average 1.67 ms.
             """),
 
-        new("CSC 301", "Deadlock: the four conditions and how to break them", ["os", "deadlock"], 5, """
+        new("Deadlock: the four conditions and how to break them", ["os", "deadlock"], 5, """
             A deadlock is when processes wait on each other forever. It can only happen if all four of these hold at the same time:
 
             1. Mutual exclusion: a resource can be used by one process at a time.
@@ -105,7 +122,7 @@ public static class SampleData
             Exam tip: if a question asks whether deadlock is possible, check the four conditions one by one.
             """),
 
-        new("CSC 301", "Paging and virtual memory in plain words", ["os", "memory"], 9, """
+        new("Paging and virtual memory in plain words", ["os", "memory"], 9, """
             Virtual memory lets a program act as if it has one big block of memory, even when physical RAM is smaller or shared.
 
             Key terms
@@ -125,7 +142,7 @@ public static class SampleData
             Thrashing is when the system spends more time swapping pages than doing work.
             """),
 
-        new("CSC 305", "Semantic HTML: the tags worth knowing", ["web", "html"], 3, """
+        new("Semantic HTML: the tags worth knowing", ["web", "html"], 3, """
             Semantic tags say what a piece of content is, not how it looks. Browsers, search engines and screen readers all use that meaning.
 
             Page structure
@@ -146,7 +163,7 @@ public static class SampleData
             A page built from div and span alone can look the same, but it tells assistive technology nothing.
             """),
 
-        new("CSC 305", "CSS box model and flexbox cheat sheet", ["web", "css"], 7, """
+        new("CSS box model and flexbox cheat sheet", ["web", "css"], 7, """
             Box model
             Every element is a box with four layers, from the inside out: content, padding, border, margin.
             By default, width only covers the content. Set box-sizing: border-box and width includes padding and border too, which is much easier to reason about.
@@ -167,7 +184,7 @@ public static class SampleData
             Use flexbox for one direction at a time. Use grid when you need rows and columns together.
             """),
 
-        new("CSC 305", "JavaScript promises and async/await", ["web", "javascript"], 12, """
+        new("JavaScript promises and async/await", ["web", "javascript"], 12, """
             A promise is a value that will be ready later, for example the reply to a network request. It is pending, then either fulfilled (it worked) or rejected (it failed).
 
             async and await make promises read like normal code:
@@ -189,7 +206,7 @@ public static class SampleData
             To run several requests at the same time, use Promise.all with an array of promises.
             """),
 
-        new("CSC 305", "Git basics: the commands you use every day", ["git", "tools"], 15, """
+        new("Git basics: the commands you use every day", ["git", "tools"], 15, """
             Git tracks changes in three places: your working folder, the staging area, and the repository history.
 
             Everyday commands
@@ -212,7 +229,7 @@ public static class SampleData
             Pull before you start work, so you don't build on an old copy.
             """),
 
-        new("CSC 317", "Project scope and handling change requests", ["project-management", "scope"], 4, """
+        new("Project scope and handling change requests", ["project-management", "scope"], 4, """
             Scope is the agreed list of what a project will deliver, and just as importantly what it will not.
 
             Useful documents
@@ -231,7 +248,7 @@ public static class SampleData
             Remember the triple constraint: scope, time and cost are tied together. A change to one affects at least one of the others.
             """),
 
-        new("CSC 317", "The five phases of an IT project", ["project-management"], 18, """
+        new("The five phases of an IT project", ["project-management"], 18, """
             Most IT projects move through five phases.
 
             1. Initiating
@@ -252,7 +269,7 @@ public static class SampleData
             A common exam question describes an activity and asks which phase it belongs to. Ask yourself whether it is deciding, planning, doing, checking or finishing.
             """),
 
-        new("CSC 313", "Breadth-first vs depth-first search", ["ai", "search"], 6, """
+        new("Breadth-first vs depth-first search", ["ai", "search"], 6, """
             Both explore a graph or a state space. They differ in which node they expand next.
 
             Breadth-first search (BFS)
@@ -273,7 +290,7 @@ public static class SampleData
             Tracing tip: write out the queue or stack after every step. Most lost marks come from expanding nodes in the wrong order.
             """),
 
-        new("CSC 313", "A* search and what makes a good heuristic", ["ai", "search", "heuristics"], 11, """
+        new("A* search and what makes a good heuristic", ["ai", "search", "heuristics"], 11, """
             A* picks the node with the lowest value of f(n) = g(n) + h(n).
 
             g(n) is the real cost from the start to n.
@@ -294,7 +311,7 @@ public static class SampleData
             A heuristic closer to the true cost, without going over it, means fewer nodes expanded.
             """),
 
-        new("CSC 201", "Big-O notation with everyday examples", ["algorithms", "complexity"], 8, """
+        new("Big-O notation with everyday examples", ["algorithms", "complexity"], 8, """
             Big-O describes how the work grows as the input size n grows. It ignores constants and focuses on the shape of the growth.
 
             From fastest to slowest
@@ -315,7 +332,7 @@ public static class SampleData
             Counting tip: one loop over n is O(n). A loop inside a loop is usually O(n^2). Halving the problem each step gives log n.
             """),
 
-        new("CSC 204", "SQL joins explained with two small tables", ["sql", "databases"], 10, """
+        new("SQL joins explained with two small tables", ["sql", "databases"], 10, """
             Take two tables.
 
             students: (1, Ama), (2, Kofi), (3, Esi)
@@ -339,7 +356,7 @@ public static class SampleData
             Tip: decide which table must appear in full, and put that one on the left.
             """),
 
-        new("CSC 204", "Normalisation: 1NF, 2NF and 3NF", ["databases", "design"], 20, """
+        new("Normalisation: 1NF, 2NF and 3NF", ["databases", "design"], 20, """
             Normalisation organises tables so each fact is stored once. That prevents update, insert and delete anomalies.
 
             First normal form (1NF)
@@ -356,7 +373,7 @@ public static class SampleData
             Working method: write down the dependencies first, then split the tables.
             """),
 
-        new("CSC 307", "TCP vs UDP, and the HTTP status codes to remember", ["networks", "http"], 14, """
+        new("TCP vs UDP, and the HTTP status codes to remember", ["networks", "http"], 14, """
             TCP
             Sets up a connection first with a three-way handshake: SYN, SYN-ACK, ACK.
             Reliable and ordered. Lost data is sent again.

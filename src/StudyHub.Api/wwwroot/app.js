@@ -237,7 +237,7 @@ async function pageHome(params, id) {
     <section class="hero">
       <div>
         <h1>Find notes for your course</h1>
-        <p class="lede">Written by students, for students. Search by topic, course code or tag.</p>
+        <p class="lede">Written by students, for students. Search by keyword, topic or course code.</p>
       </div>
       ${HERO_ART}
     </section>
@@ -251,7 +251,7 @@ async function pageHome(params, id) {
           <input name="course" value="${esc(filters.course)}" placeholder="CSC 301" maxlength="20">
         </label>
         <label class="field">
-          <span>Tag</span>
+          <span>Topic</span>
           <input name="tag" value="${esc(filters.tag)}" placeholder="os" maxlength="50">
         </label>
         <button type="submit" class="btn btn-primary">Search notes</button>
@@ -345,7 +345,9 @@ function noteRow(note) {
     <li class="note-row">
       <a href="#/note/${esc(note.id)}">
         <span class="card-top">
-          ${note.courseCode ? `<span class="course">${esc(note.courseCode)}</span>` : "<span></span>"}
+          ${note.courseCode
+            ? `<span class="course">${esc(note.courseCode)}</span>`
+            : `<span class="note-tags">${tags}</span>`}
           <span class="card-counts">
             ${note.helpfulCount > 0 ? `<span class="helpful-count">${note.helpfulCount} helpful</span>` : ""}
             ${note.commentCount > 0 ? `<span class="comment-count">${note.commentCount} ${note.commentCount === 1 ? "comment" : "comments"}</span>` : ""}
@@ -353,7 +355,7 @@ function noteRow(note) {
         </span>
         <span class="note-title">${esc(note.title)}</span>
         ${note.preview ? `<span class="note-preview">${esc(makePreview(note.preview))}</span>` : ""}
-        ${tags ? `<span class="note-tags">${tags}</span>` : ""}
+        ${note.courseCode && tags ? `<span class="note-tags">${tags}</span>` : ""}
         <span class="note-meta">${avatar(note.authorName)}<span>${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span></span>
       </a>
     </li>`;
@@ -655,7 +657,7 @@ async function pageEditor(noteId, id) {
           <small>Optional</small>
         </label>
         <label class="field">
-          <span>Tags</span>
+          <span>Topics</span>
           <input name="tags" value="${esc(note.tags.join(", "))}" placeholder="os, scheduling">
           <small>Up to 5, separated by commas</small>
         </label>
@@ -676,7 +678,7 @@ async function pageEditor(noteId, id) {
     event.preventDefault();
     submitForm(event.target, async (data) => {
       const tags = parseTags(data.get("tags"));
-      if (tags.length > 5) throw new Error("Use 5 tags or fewer.");
+      if (tags.length > 5) throw new Error("Use 5 topics or fewer.");
 
       const body = {
         title: data.get("title").trim(),
