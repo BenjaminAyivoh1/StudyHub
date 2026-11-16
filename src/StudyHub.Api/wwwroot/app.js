@@ -714,12 +714,12 @@ function pageAuth(mode, params) {
         </label>` : ""}
       <label class="field">
         <span>Email</span>
-        <input name="email" type="email" required maxlength="256" autocomplete="email">
+        <input name="email" id="email" type="email" required maxlength="256" autocomplete="username">
       </label>
       <label class="field">
         <span>Password</span>
         <input name="password" type="password" required minlength="${isSignup ? 8 : 1}" maxlength="100"
-          autocomplete="${isSignup ? "new-password" : "current-password"}">
+          id="password" autocomplete="${isSignup ? "new-password" : "current-password"}">
         ${isSignup ? "<small>At least 8 characters</small>" : ""}
       </label>
       ${isSignup ? `
