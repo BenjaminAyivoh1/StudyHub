@@ -13,18 +13,29 @@
 <body>
   <a class="skip-link" href="#app">Skip to content</a>
 
-  <div class="page">
-    <header class="site-header">
-      <a class="brand" href="#/">StudyHub</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#/">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="2" width="26" height="28" rx="5" fill="#17233f"/>
+          <rect x="9" y="2" width="2" height="28" fill="#d2414f"/>
+          <rect x="14" y="8" width="11" height="5" rx="1.5" fill="#ffe35a"/>
+          <rect x="14" y="17" width="11" height="2" rx="1" fill="#c5d6ec"/>
+          <rect x="14" y="22" width="8" height="2" rx="1" fill="#c5d6ec"/>
+        </svg>
+        StudyHub
+      </a>
       <nav id="nav" class="site-nav" aria-label="Main"></nav>
-    </header>
+    </div>
+  </header>
 
-    <main id="app" tabindex="-1"></main>
+  <main id="app" class="wrap" tabindex="-1"></main>
 
-    <footer class="site-footer">
+  <footer class="site-footer">
+    <div class="wrap">
       <p>Notes here are written by students. If something shouldn't be here, open the note and report it.</p>
-    </footer>
-  </div>
+    </div>
+  </footer>
 
   <script src="app.js"></script>
 </body>

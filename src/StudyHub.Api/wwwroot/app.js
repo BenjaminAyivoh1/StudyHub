@@ -111,6 +111,38 @@ function formatDate(iso) {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
+// A coloured circle with the first letter of a name. The colour is picked
+// from the name, so the same person always gets the same colour.
+function avatar(name) {
+  const text = String(name || "?").trim() || "?";
+  let hash = 0;
+  for (const ch of text) hash = (hash * 31 + ch.codePointAt(0)) % 997;
+  return `<span class="avatar avatar-${hash % 5}" aria-hidden="true">${esc(text[0].toUpperCase())}</span>`;
+}
+
+// The drawing in the home page band: two sheets of ruled notes.
+const HERO_ART = `
+  <svg class="hero-art" viewBox="0 0 340 250" aria-hidden="true">
+    <rect x="66" y="30" width="214" height="194" rx="10" fill="#33456f" transform="rotate(-8 173 127)"/>
+    <g transform="rotate(4 170 125)">
+      <rect x="58" y="22" width="224" height="204" rx="10" fill="#ffffff"/>
+      <rect x="90" y="22" width="2" height="204" fill="#d2414f"/>
+      <rect x="104" y="46" width="88" height="22" rx="3" fill="#ffe35a"/>
+      <rect x="104" y="80" width="150" height="12" rx="6" fill="#17233f"/>
+      <g stroke="#c5d6ec" stroke-width="1.5">
+        <path d="M58 114h224M58 138h224M58 162h224M58 186h224M58 210h224"/>
+      </g>
+      <g fill="#93a1bd">
+        <rect x="104" y="103" width="142" height="6" rx="3"/>
+        <rect x="104" y="127" width="118" height="6" rx="3"/>
+        <rect x="104" y="151" width="154" height="6" rx="3"/>
+        <rect x="104" y="175" width="96" height="6" rx="3"/>
+      </g>
+      <circle cx="262" cy="48" r="17" fill="#ffe35a"/>
+      <path d="M254 48l6 6 11-12" fill="none" stroke="#17233f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </svg>`;
+
 function go(path) {
   location.hash = `#${path}`;
 }
@@ -163,7 +195,7 @@ function renderNav() {
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
        <a class="btn btn-primary" href="#/new">Write a note</a>
-       <span class="who">${esc(user.displayName)}</span>
+       <span class="who">${avatar(user.displayName)}<span>${esc(user.displayName)}</span></span>
        <button type="button" class="link-button" id="logout">Log out</button>`
     : `<a href="#/">Browse notes</a>
        <a href="#/login">Log in</a>
@@ -191,12 +223,16 @@ async function pageHome(params, id) {
     page: Math.max(1, parseInt(params.get("page"), 10) || 1),
   };
 
+  const notice = takeFlash();
   app.innerHTML = `
-    ${takeFlash()}
-    <section>
-      <h1>Find notes for your course</h1>
-      <p class="lede">Written by students, for students. Search by topic, course code or tag.</p>
-      <form class="search" id="search-form" role="search">
+    <section class="hero">
+      <div>
+        <h1>Find notes for your course</h1>
+        <p class="lede">Written by students, for students. Search by topic, course code or tag.</p>
+      </div>
+      ${HERO_ART}
+    </section>
+    <form class="search panel" id="search-form" role="search">
         <label class="field field-wide">
           <span>Topic or keyword</span>
           <input name="search" type="search" value="${esc(filters.search)}" placeholder="deadlock, CSS grid, recursion">
@@ -210,8 +246,8 @@ async function pageHome(params, id) {
           <input name="tag" value="${esc(filters.tag)}" placeholder="os" maxlength="50">
         </label>
         <button type="submit" class="btn btn-primary">Search notes</button>
-      </form>
-    </section>
+    </form>
+    ${notice}
     <section class="results" id="results" aria-live="polite">
       <p class="muted">Loading notes…</p>
     </section>`;
@@ -249,11 +285,13 @@ async function pageHome(params, id) {
     results.innerHTML = filtered
       ? `<div class="empty">
            <h2>No notes match that search</h2>
-           <p>Try a different word, or remove a filter. <a href="#/">Show all notes</a></p>
+           <p class="muted">Try a different word, or remove a filter.</p>
+           <a class="btn" href="#/">Show all notes</a>
          </div>`
       : `<div class="empty">
            <h2>No notes yet</h2>
-           <p>Be the first to share one. <a href="#/new">Write a note</a></p>
+           <p class="muted">Be the first to share one.</p>
+           <a class="btn btn-primary" href="#/new">Write a note</a>
          </div>`;
     return;
   }
@@ -265,7 +303,7 @@ async function pageHome(params, id) {
     <div class="results-head">
       <h2>${filtered ? `${count} found` : `All notes (${data.totalCount})`}</h2>
       <p class="sort">
-        <span class="muted">Show first:</span>
+        <span class="muted">Show first</span>
         <a href="#${homeAddress({ ...filters, sort: "", page: 1 })}" ${filters.sort ? "" : 'aria-current="true"'}>Newest</a>
         <a href="#${homeAddress({ ...filters, sort: "helpful", page: 1 })}" ${filters.sort ? 'aria-current="true"' : ""}>Most helpful</a>
         ${filtered ? `<a class="clear" href="#${homeAddress({ sort: filters.sort })}">Clear search</a>` : ""}
@@ -298,10 +336,13 @@ function noteRow(note) {
   return `
     <li class="note-row">
       <a href="#/note/${esc(note.id)}">
-        ${note.courseCode ? `<span class="course">${esc(note.courseCode)}</span>` : `<span></span>`}
+        <span class="card-top">
+          ${note.courseCode ? `<span class="course">${esc(note.courseCode)}</span>` : "<span></span>"}
+          ${note.helpfulCount > 0 ? `<span class="helpful-count">${note.helpfulCount} helpful</span>` : ""}
+        </span>
         <span class="note-title">${esc(note.title)}</span>
-        <span class="note-meta">${note.helpfulCount > 0 ? `<strong>${note.helpfulCount} helpful</strong>, ` : ""}${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span>
         ${tags ? `<span class="note-tags">${tags}</span>` : ""}
+        <span class="note-meta">${avatar(note.authorName)}<span>${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span></span>
       </a>
     </li>`;
 }
@@ -343,21 +384,23 @@ async function pageNote(noteId, id) {
   app.innerHTML = `
     ${takeFlash()}
     <a class="back" href="#/">Back to all notes</a>
-    <article>
+    <article class="sheet">
       <header class="note-head">
         ${note.courseCode ? `<a class="course" href="#${homeAddress({ course: note.courseCode })}">${esc(note.courseCode)}</a>` : ""}
         <h1>${esc(note.title)}</h1>
-        <p class="byline">By ${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}${edited ? ` (edited ${esc(formatDate(note.updatedAtUtc))})` : ""}</p>
+        <p class="byline">${avatar(note.authorName)}<span>${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}${edited ? ` (edited ${esc(formatDate(note.updatedAtUtc))})` : ""}</span></p>
         ${note.tags.length ? `
           <p class="tag-links">
             ${note.tags.map((tag) => `<a href="#${homeAddress({ tag })}">#${esc(tag)}</a>`).join("")}
           </p>` : ""}
       </header>
       <div class="ruled">${esc(note.body)}</div>
-    </article>
-    <div class="helpful" id="helpful"></div>
-    <div class="note-actions" id="note-actions">${actions}</div>
-    <div id="report-area"></div>`;
+      <footer class="sheet-foot">
+        <div class="helpful" id="helpful"></div>
+        <div class="note-actions" id="note-actions">${actions}</div>
+        <div id="report-area"></div>
+      </footer>
+    </article>`;
 
   renderHelpful(note, isAuthor);
 
@@ -491,6 +534,7 @@ async function pageEditor(noteId, id) {
 
   const saveLabel = noteId ? "Save changes" : "Publish note";
   app.innerHTML = `
+    <section class="panel panel-form">
     <h1>${noteId ? "Edit your note" : "Write a note"}</h1>
     <p class="lede">Share notes you wrote yourself. Don't paste in textbooks or exam papers.</p>
     <form class="form" id="note-form">
@@ -520,7 +564,8 @@ async function pageEditor(noteId, id) {
         <button type="submit" class="btn btn-primary">${saveLabel}</button>
         <a href="#${noteId ? `/note/${esc(noteId)}` : "/"}">Cancel</a>
       </div>
-    </form>`;
+    </form>
+    </section>`;
 
   document.getElementById("note-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -553,9 +598,10 @@ function pageAuth(mode, params) {
   const nextQuery = params.get("next") ? `?next=${encodeURIComponent(next)}` : "";
 
   app.innerHTML = `
+    <section class="panel panel-narrow">
     ${takeFlash()}
     <h1>${isSignup ? "Create your account" : "Log in"}</h1>
-    <form class="form form-narrow" id="auth-form">
+    <form class="form" id="auth-form">
       ${isSignup ? `
         <label class="field">
           <span>Your name</span>
@@ -579,7 +625,8 @@ function pageAuth(mode, params) {
           ? `<a href="#/login${nextQuery}">I already have an account</a>`
           : `<a href="#/signup${nextQuery}">Create an account</a>`}
       </div>
-    </form>`;
+    </form>
+    </section>`;
 
   document.getElementById("auth-form").addEventListener("submit", (event) => {
     event.preventDefault();
