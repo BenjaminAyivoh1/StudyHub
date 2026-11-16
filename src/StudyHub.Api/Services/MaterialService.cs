@@ -21,6 +21,7 @@ public interface IMaterialService
 public class MaterialService(AppDbContext db) : IMaterialService
 {
     private const int MaxPageSize = 50;
+    private const int PreviewLength = 200; // characters of the note shown on a card
 
     public async Task<PagedResult<MaterialSummary>> SearchAsync(MaterialQuery q, CancellationToken ct = default)
     {
@@ -66,7 +67,9 @@ public class MaterialService(AppDbContext db) : IMaterialService
                 m.Tags.Select(t => t.Name).OrderBy(n => n).ToList(),
                 m.Author.DisplayName,
                 m.CreatedAtUtc,
-                m.HelpfulVotes.Count))
+                m.HelpfulVotes.Count,
+                m.Comments.Count,
+                m.Body.Length > PreviewLength ? m.Body.Substring(0, PreviewLength) : m.Body))
             .ToListAsync(ct);
 
         return new PagedResult<MaterialSummary>(items, page, pageSize, totalCount);

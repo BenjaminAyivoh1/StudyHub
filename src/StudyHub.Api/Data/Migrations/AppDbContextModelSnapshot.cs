@@ -37,6 +37,35 @@ namespace StudyHub.Api.Data.Migrations
                     b.ToTable("MaterialTag");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("MaterialId", "CreatedAtUtc");
+
+                    b.ToTable("Comments");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
                 {
                     b.Property<Guid>("MaterialId")
@@ -191,6 +220,25 @@ namespace StudyHub.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.Comment", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyHub.Api.Domain.Material", "Material")
+                        .WithMany("Comments")
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Material");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
                 {
                     b.HasOne("StudyHub.Api.Domain.Material", "Material")
@@ -238,6 +286,8 @@ namespace StudyHub.Api.Data.Migrations
 
             modelBuilder.Entity("StudyHub.Api.Domain.Material", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("HelpfulVotes");
 
                     b.Navigation("Reports");

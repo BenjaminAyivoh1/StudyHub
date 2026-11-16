@@ -545,10 +545,33 @@ textarea.short {
   font-size: 0.9375rem;
 }
 
-.helpful-count {
+.card-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.15rem 0.75rem;
   font-size: 0.875rem;
-  font-weight: 700;
   white-space: nowrap;
+}
+
+.helpful-count {
+  font-weight: 700;
+}
+
+.comment-count {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.note-preview {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* Course codes are marked with highlighter. */
@@ -694,6 +717,97 @@ textarea.short {
   margin-top: 1.5rem;
 }
 
+/* ----- comments under a note ----- */
+
+.comments {
+  max-width: 52rem;
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.comments h2 {
+  font-size: 1.375rem;
+}
+
+.comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.comment {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.comment:first-child {
+  padding-top: 0;
+}
+
+.comment-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.comment-delete {
+  margin-left: auto;
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+.comment-body {
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment-form {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ----- pop-up messages ----- */
+
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+  display: grid;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+}
+
+.toast {
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  border-left: 5px solid var(--highlight);
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sheet);
+}
+
+.toast-error {
+  border-left-color: var(--margin-red);
+}
+
+.toast-info {
+  border-left-color: var(--rule);
+}
+
 /* ----- footer ----- */
 
 .site-footer {
@@ -768,8 +882,19 @@ textarea.short {
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
   }
 
+  .toast {
+    animation: toast-in 180ms ease;
+  }
+
   .note-row a:hover {
     transform: translateY(-3px);
     box-shadow: 0 2px 4px rgba(23, 35, 63, 0.08), 0 16px 28px -14px rgba(23, 35, 63, 0.32);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }

@@ -2,7 +2,7 @@
 
 A study-notes platform for university students. Students write and share notes, tag them by course, search them, and report anything that shouldn't be there. A live quiz mode comes in Phase 2.
 
-> **Status:** Phase 1 (notes library API) in progress. `StudyHub` is a working name; rename it whenever you like.
+> **Status:** Phase 1 (notes library) in progress.
 
 ## What it does today
 
@@ -10,7 +10,10 @@ A study-notes platform for university students. Students write and share notes, 
 - Create, edit and delete your own notes
 - Tag notes and tie them to a course code (for example `DCIT 305`)
 - Search by text, tag or course, with pagination
+- Mark notes as helpful, and sort by most helpful
+- Comment on notes
 - Report a note (one open report per user per note)
+- A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
 - Health check at `/health`
 
 ## Tech stack
@@ -45,7 +48,7 @@ dotnet ef migrations add InitialCreate --project src/StudyHub.Api --output-dir D
 dotnet run --project src/StudyHub.Api
 ```
 
-The API listens on `http://localhost:5080`. Open `src/StudyHub.Api/requests.http` in VS Code (REST Client extension) or Rider to try it out.
+The website and API are both at `http://localhost:5080`. To call the API directly, open `src/StudyHub.Api/requests.http` in VS Code (REST Client extension) or Rider to try it out.
 
 Run everything in containers instead:
 
@@ -59,12 +62,17 @@ docker compose up --build        # API on http://localhost:8080
 |---|---|---|---|
 | POST | `/api/auth/register` | no | Create an account, returns a token |
 | POST | `/api/auth/login` | no | Log in, returns a token |
-| GET | `/api/materials?search=&tag=&courseCode=&page=&pageSize=` | no | Search and list notes |
+| GET | `/api/materials?search=&tag=&courseCode=&sort=&page=&pageSize=` | no | Search and list notes (`sort=helpful` for most helpful first) |
 | GET | `/api/materials/{id}` | no | Read one note |
 | POST | `/api/materials` | yes | Create a note |
 | PUT | `/api/materials/{id}` | yes (author only) | Edit a note |
 | DELETE | `/api/materials/{id}` | yes (author only) | Delete a note |
 | POST | `/api/materials/{id}/reports` | yes | Report a note |
+| PUT | `/api/materials/{id}/helpful` | yes (not the author) | Mark a note as helpful |
+| DELETE | `/api/materials/{id}/helpful` | yes | Remove your helpful mark |
+| GET | `/api/materials/{id}/comments` | no | List a note's comments |
+| POST | `/api/materials/{id}/comments` | yes | Add a comment |
+| DELETE | `/api/materials/{id}/comments/{commentId}` | yes (comment author only) | Delete a comment |
 
 Errors come back as standard problem-details JSON (`401`, `403`, `404`, `409`, `400` for validation).
 
@@ -74,11 +82,12 @@ Errors come back as standard problem-details JSON (`401`, `403`, `404`, `409`, `
 src/StudyHub.Api
   Controllers/   thin HTTP layer: read the request, call a service, return a result
   Services/      the actual rules (who may edit what, how search works)
-  Domain/        entities: User, Material, Tag, Report
+  Domain/        entities: User, Material, Tag, Report, HelpfulVote, Comment
   Data/          EF Core DbContext and migrations
   Security/      password hashing and JWT creation
   Contracts/     request and response shapes (what the API accepts and returns)
   Common/        exceptions and the handler that turns them into HTTP responses
+  wwwroot/       the website: index.html, styles.css, app.js
 tests/StudyHub.Tests   unit tests for the services and the password hasher
 ```
 

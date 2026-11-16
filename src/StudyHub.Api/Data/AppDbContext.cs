@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<HelpfulVote> HelpfulVotes => Set<HelpfulVote>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Comment>(e =>
+        {
+            e.Property(c => c.Body).HasMaxLength(1000);
+
+            // Comments are always read per note, oldest first.
+            e.HasIndex(c => new { c.MaterialId, c.CreatedAtUtc });
+
+            e.HasOne(c => c.Material)
+                .WithMany(m => m.Comments)
+                .HasForeignKey(c => c.MaterialId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(c => c.Author)
+                .WithMany()
+                .HasForeignKey(c => c.AuthorId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

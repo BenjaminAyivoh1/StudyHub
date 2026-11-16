@@ -9,7 +9,7 @@ const PAGE_SIZE = 10;
 const app = document.getElementById("app");
 const nav = document.getElementById("nav");
 
-let flash = null; // a one-time message shown at the top of the next page
+const toasts = document.getElementById("toasts");
 let renderId = 0; // lets us ignore a slow response from a page the user already left
 
 // ---------- who is logged in ----------
@@ -65,7 +65,7 @@ async function api(path, { method = "GET", body } = {}) {
   // The token expires after an hour. Send the user back to log in.
   if (response.status === 401 && user && !path.startsWith("/auth/")) {
     session.clear();
-    flash = "Your session ended. Log in again to continue.";
+    toast("Your session ended. Log in again to continue.", "error");
     go(`/login?next=${encodeURIComponent(location.hash.slice(1) || "/")}`);
     throw new Error("Your session ended. Log in again to continue.");
   }
@@ -153,11 +153,15 @@ function readAddress() {
   return { parts: path.split("/").filter(Boolean), params: new URLSearchParams(query) };
 }
 
-function takeFlash() {
-  if (!flash) return "";
-  const html = `<p class="notice" role="status">${esc(flash)}</p>`;
-  flash = null;
-  return html;
+// A small message that pops up in the corner and disappears by itself.
+function toast(message, type = "success") {
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.setAttribute("role", "status");
+  el.textContent = message;
+  toasts.append(el);
+  while (toasts.children.length > 3) toasts.firstElementChild.remove(); // never more than 3 at once
+  setTimeout(() => el.remove(), 4500);
 }
 
 function showFormError(form, message) {
@@ -179,6 +183,12 @@ async function submitForm(form, action) {
   } finally {
     button.disabled = false;
   }
+}
+
+// Tidies the start of a note into one short line of text for a card.
+function makePreview(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  return clean.length > 150 ? `${clean.slice(0, 150).trimEnd()}…` : clean;
 }
 
 function parseTags(text) {
@@ -205,7 +215,7 @@ function renderNav() {
   if (logout) {
     logout.addEventListener("click", () => {
       session.clear();
-      flash = "Logged out.";
+      toast("Logged out.");
       if (location.hash === "#/" || location.hash === "") route();
       else go("/");
     });
@@ -223,7 +233,6 @@ async function pageHome(params, id) {
     page: Math.max(1, parseInt(params.get("page"), 10) || 1),
   };
 
-  const notice = takeFlash();
   app.innerHTML = `
     <section class="hero">
       <div>
@@ -247,7 +256,6 @@ async function pageHome(params, id) {
         </label>
         <button type="submit" class="btn btn-primary">Search notes</button>
     </form>
-    ${notice}
     <section class="results" id="results" aria-live="polite">
       <p class="muted">Loading notes…</p>
     </section>`;
@@ -338,9 +346,13 @@ function noteRow(note) {
       <a href="#/note/${esc(note.id)}">
         <span class="card-top">
           ${note.courseCode ? `<span class="course">${esc(note.courseCode)}</span>` : "<span></span>"}
-          ${note.helpfulCount > 0 ? `<span class="helpful-count">${note.helpfulCount} helpful</span>` : ""}
+          <span class="card-counts">
+            ${note.helpfulCount > 0 ? `<span class="helpful-count">${note.helpfulCount} helpful</span>` : ""}
+            ${note.commentCount > 0 ? `<span class="comment-count">${note.commentCount} ${note.commentCount === 1 ? "comment" : "comments"}</span>` : ""}
+          </span>
         </span>
         <span class="note-title">${esc(note.title)}</span>
+        ${note.preview ? `<span class="note-preview">${esc(makePreview(note.preview))}</span>` : ""}
         ${tags ? `<span class="note-tags">${tags}</span>` : ""}
         <span class="note-meta">${avatar(note.authorName)}<span>${esc(note.authorName)}, ${esc(formatDate(note.createdAtUtc))}</span></span>
       </a>
@@ -382,7 +394,6 @@ async function pageNote(noteId, id) {
 
   document.title = `${note.title} | StudyHub`;
   app.innerHTML = `
-    ${takeFlash()}
     <a class="back" href="#/">Back to all notes</a>
     <article class="sheet">
       <header class="note-head">
@@ -400,9 +411,13 @@ async function pageNote(noteId, id) {
         <div class="note-actions" id="note-actions">${actions}</div>
         <div id="report-area"></div>
       </footer>
-    </article>`;
+    </article>
+    <section class="comments panel" id="comments" aria-label="Comments">
+      <p class="muted">Loading comments…</p>
+    </section>`;
 
   renderHelpful(note, isAuthor);
+  loadComments(note, id);
 
   const deleteButton = document.getElementById("delete");
   if (deleteButton) deleteButton.addEventListener("click", () => confirmDelete(note));
@@ -449,6 +464,95 @@ function renderHelpful(note, isAuthor) {
   });
 }
 
+// ---------- comments under a note ----------
+
+async function loadComments(note, id) {
+  const box = document.getElementById("comments");
+  let comments;
+  try {
+    comments = await api(`/materials/${encodeURIComponent(note.id)}/comments`);
+  } catch (error) {
+    if (id === renderId) box.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+  renderComments(note, comments);
+}
+
+function renderComments(note, comments) {
+  const box = document.getElementById("comments");
+  const user = session.get();
+
+  const list = comments.length
+    ? `<ul class="comment-list">
+         ${comments.map((comment) => `
+           <li class="comment">
+             ${avatar(comment.authorName)}
+             <div class="comment-main">
+               <p class="comment-head">
+                 <strong>${esc(comment.authorName)}</strong>
+                 <span class="muted">${esc(formatDate(comment.createdAtUtc))}</span>
+                 ${user && user.userId === comment.authorId
+                   ? `<button type="button" class="link-button comment-delete" data-delete="${esc(comment.id)}">Delete</button>`
+                   : ""}
+               </p>
+               <p class="comment-body">${esc(comment.body)}</p>
+             </div>
+           </li>`).join("")}
+       </ul>`
+    : `<p class="muted">No comments yet. Ask a question or share a correction.</p>`;
+
+  const form = user
+    ? `<form class="comment-form" id="comment-form">
+         <label class="field">
+           <span>Add a comment</span>
+           <textarea class="short" name="body" required minlength="2" maxlength="1000"
+             placeholder="Ask a question, or point out something to fix"></textarea>
+         </label>
+         <p class="error" role="alert" hidden></p>
+         <div class="form-actions">
+           <button type="submit" class="btn btn-primary">Post comment</button>
+         </div>
+       </form>`
+    : `<p><a href="#/login?next=${encodeURIComponent(`/note/${note.id}`)}">Log in to comment</a></p>`;
+
+  box.innerHTML = `
+    <h2>${comments.length === 0 ? "Comments" : `Comments (${comments.length})`}</h2>
+    ${list}
+    ${form}`;
+
+  box.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await api(`/materials/${encodeURIComponent(note.id)}/comments/${encodeURIComponent(button.dataset.delete)}`, {
+          method: "DELETE",
+        });
+        toast("Comment deleted.");
+        renderComments(note, comments.filter((comment) => comment.id !== button.dataset.delete));
+      } catch (error) {
+        button.disabled = false;
+        toast(error.message, "error");
+      }
+    });
+  });
+
+  const commentForm = document.getElementById("comment-form");
+  if (commentForm) {
+    commentForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitForm(commentForm, async (data) => {
+        const added = await api(`/materials/${encodeURIComponent(note.id)}/comments`, {
+          method: "POST",
+          body: { body: data.get("body").trim() },
+        });
+        toast("Comment posted.");
+        renderComments(note, [...comments, added]);
+      });
+    });
+  }
+}
+
 // Deleting asks a second time, in the page, before anything is removed.
 function confirmDelete(note) {
   const area = document.getElementById("note-actions");
@@ -463,7 +567,7 @@ function confirmDelete(note) {
     event.target.disabled = true;
     try {
       await api(`/materials/${encodeURIComponent(note.id)}`, { method: "DELETE" });
-      flash = "Note deleted.";
+      toast("Note deleted.");
       go("/");
     } catch (error) {
       area.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
@@ -499,8 +603,9 @@ function showReportForm(note) {
         method: "POST",
         body: { reason: data.get("reason").trim() },
       });
-      area.innerHTML = `<p class="notice" role="status">Report sent. Thanks for flagging it.</p>`;
+      area.innerHTML = "";
       document.getElementById("note-actions").innerHTML = "";
+      toast("Report sent. Thanks for flagging it.");
     });
   });
 }
@@ -510,7 +615,7 @@ function showReportForm(note) {
 async function pageEditor(noteId, id) {
   const user = session.get();
   if (!user) {
-    flash = "Log in to write a note.";
+    toast("Log in to write a note.", "info");
     go(`/login?next=${encodeURIComponent(noteId ? `/edit/${noteId}` : "/new")}`);
     return;
   }
@@ -526,7 +631,7 @@ async function pageEditor(noteId, id) {
     }
     if (id !== renderId) return;
     if (note.authorId !== user.userId) {
-      flash = "You can only edit your own notes.";
+      toast("You can only edit your own notes.", "error");
       go(`/note/${noteId}`);
       return;
     }
@@ -584,7 +689,7 @@ async function pageEditor(noteId, id) {
         ? await api(`/materials/${encodeURIComponent(noteId)}`, { method: "PUT", body })
         : await api("/materials", { method: "POST", body });
 
-      flash = noteId ? "Changes saved." : "Note published.";
+      toast(noteId ? "Changes saved." : "Note published.");
       go(`/note/${saved.id}`);
     });
   });
@@ -599,7 +704,6 @@ function pageAuth(mode, params) {
 
   app.innerHTML = `
     <section class="panel panel-narrow">
-    ${takeFlash()}
     <h1>${isSignup ? "Create your account" : "Log in"}</h1>
     <form class="form" id="auth-form">
       ${isSignup ? `
@@ -618,6 +722,11 @@ function pageAuth(mode, params) {
           autocomplete="${isSignup ? "new-password" : "current-password"}">
         ${isSignup ? "<small>At least 8 characters</small>" : ""}
       </label>
+      ${isSignup ? `
+        <label class="field">
+          <span>Confirm password</span>
+          <input name="confirm" type="password" required maxlength="100" autocomplete="new-password">
+        </label>` : ""}
       <p class="error" role="alert" hidden></p>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">${isSignup ? "Sign up" : "Log in"}</button>
@@ -631,6 +740,10 @@ function pageAuth(mode, params) {
   document.getElementById("auth-form").addEventListener("submit", (event) => {
     event.preventDefault();
     submitForm(event.target, async (data) => {
+      if (isSignup && data.get("password") !== data.get("confirm")) {
+        throw new Error("The two passwords don't match.");
+      }
+
       const body = { email: data.get("email").trim(), password: data.get("password") };
       if (isSignup) body.displayName = data.get("displayName").trim();
 

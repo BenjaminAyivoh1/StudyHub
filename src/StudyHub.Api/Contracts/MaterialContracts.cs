@@ -18,7 +18,7 @@ public record MaterialQuery(
     int PageSize = 20,
     string? Sort = null);
 
-/// <summary>Lightweight version for lists (no body).</summary>
+/// <summary>Lightweight version for lists: the start of the note instead of the whole text.</summary>
 public record MaterialSummary(
     Guid Id,
     string Title,
@@ -26,7 +26,9 @@ public record MaterialSummary(
     List<string> Tags,
     string AuthorName,
     DateTime CreatedAtUtc,
-    int HelpfulCount);
+    int HelpfulCount,
+    int CommentCount,
+    string Preview);
 
 public record MaterialResponse(
     Guid Id,
