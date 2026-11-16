@@ -13,6 +13,7 @@ A study-notes platform for university students. Students write and share notes, 
 - Mark notes as helpful, and sort by most helpful
 - Comment on notes
 - Report a note (one open report per user per note)
+- An admin page for reviewing reports and removing notes or comments
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
 - 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account. They are organised by topic with no course code, since codes differ between universities; students add their own
 - Health check at `/health`
@@ -67,6 +68,9 @@ Set these as environment variables on the host. None of them belong in Git.
 | `Jwt__Key` | A long random secret (32 characters or more) |
 | `Database__MigrateOnStartup` | `true`, so the tables are created on first start |
 | `Database__SeedSampleNotes` | `true`, to add the starter notes once |
+| `Admin__Emails` | The email addresses of the site's admins, separated by commas |
+
+Sign up on the site with your admin email **before** setting `Admin__Emails`, so nobody else can register that address first.
 
 The app reads the `PORT` variable if the host sets one.
 
@@ -87,6 +91,11 @@ The app reads the `PORT` variable if the host sets one.
 | GET | `/api/materials/{id}/comments` | no | List a note's comments |
 | POST | `/api/materials/{id}/comments` | yes | Add a comment |
 | DELETE | `/api/materials/{id}/comments/{commentId}` | yes (comment author only) | Delete a comment |
+| GET | `/api/auth/me` | yes | Who is logged in, and whether they are an admin |
+| GET | `/api/admin/reports` | admin | List open reports |
+| POST | `/api/admin/reports/{id}/dismiss` | admin | Keep the note and close the report |
+| DELETE | `/api/admin/materials/{id}` | admin | Remove any note |
+| DELETE | `/api/admin/comments/{id}` | admin | Remove any comment |
 
 Errors come back as standard problem-details JSON (`401`, `403`, `404`, `409`, `400` for validation).
 

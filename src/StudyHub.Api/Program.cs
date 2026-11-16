@@ -41,6 +41,7 @@ builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMaterialService, MaterialService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -58,7 +59,13 @@ builder.Services
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
-builder.Services.AddAuthorization();
+// Admins are the people whose email is listed in Admin:Emails. The "Admin" policy protects the admin routes.
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.Section));
+var adminOptions = builder.Configuration.GetSection(AdminOptions.Section).Get<AdminOptions>() ?? new AdminOptions();
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(AdminOptions.Policy, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context => adminOptions.IsAdmin(context.User.GetEmail()))));
 
 builder.Services.AddControllers();
 builder.Services.AddExceptionHandler<AppExceptionHandler>();

@@ -89,6 +89,7 @@ function problemMessage(data, status) {
     if (messages.length) return messages.join(" ");
   }
   if (data && data.title) return data.title;
+  if (status === 403) return "You don't have permission to do that.";
   return `Something went wrong (error ${status}). Try again.`;
 }
 
@@ -204,6 +205,7 @@ function renderNav() {
   const user = session.get();
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
+       ${user.isAdmin ? `<a href="#/admin">Reports</a>` : ""}
        <a class="btn btn-primary" href="#/new">Write a note</a>
        <span class="who">${avatar(user.displayName)}<span>${esc(user.displayName)}</span></span>
        <button type="button" class="link-button" id="logout">Log out</button>`
@@ -389,7 +391,9 @@ async function pageNote(noteId, id) {
       <a class="btn" href="#/edit/${esc(note.id)}">Edit note</a>
       <button type="button" class="btn btn-danger" id="delete">Delete note</button>`;
   } else if (user) {
-    actions = `<button type="button" class="link-button" id="report-toggle">Report this note</button>`;
+    actions = `
+      <button type="button" class="link-button" id="report-toggle">Report this note</button>
+      ${user.isAdmin ? `<button type="button" class="btn btn-danger" id="admin-remove">Remove note</button>` : ""}`;
   } else {
     actions = `<a href="#/login?next=${encodeURIComponent(`/note/${note.id}`)}">Log in to report this note</a>`;
   }
@@ -426,6 +430,16 @@ async function pageNote(noteId, id) {
 
   const reportToggle = document.getElementById("report-toggle");
   if (reportToggle) reportToggle.addEventListener("click", () => showReportForm(note));
+
+  // Admins can remove any note.
+  const adminRemove = document.getElementById("admin-remove");
+  if (adminRemove) {
+    confirmButton(adminRemove, "Yes, remove this note", async () => {
+      await api(`/admin/materials/${encodeURIComponent(note.id)}`, { method: "DELETE" });
+      toast("Note removed.");
+      go("/");
+    });
+  }
 }
 
 // The "helpful" line under a note: a count for everyone, and a button for
@@ -494,8 +508,9 @@ function renderComments(note, comments) {
                <p class="comment-head">
                  <strong>${esc(comment.authorName)}</strong>
                  <span class="muted">${esc(formatDate(comment.createdAtUtc))}</span>
-                 ${user && user.userId === comment.authorId
-                   ? `<button type="button" class="link-button comment-delete" data-delete="${esc(comment.id)}">Delete</button>`
+                 ${user && (user.userId === comment.authorId || user.isAdmin)
+                   ? `<button type="button" class="link-button comment-delete" data-delete="${esc(comment.id)}"
+                        ${user.userId === comment.authorId ? "" : 'data-admin="yes"'}>Delete</button>`
                    : ""}
                </p>
                <p class="comment-body">${esc(comment.body)}</p>
@@ -527,9 +542,12 @@ function renderComments(note, comments) {
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {
-        await api(`/materials/${encodeURIComponent(note.id)}/comments/${encodeURIComponent(button.dataset.delete)}`, {
-          method: "DELETE",
-        });
+        // Your own comment goes through the normal route; an admin removing someone else's uses the admin route.
+        const commentId = encodeURIComponent(button.dataset.delete);
+        const path = button.dataset.admin
+          ? `/admin/comments/${commentId}`
+          : `/materials/${encodeURIComponent(note.id)}/comments/${commentId}`;
+        await api(path, { method: "DELETE" });
         toast("Comment deleted.");
         renderComments(note, comments.filter((comment) => comment.id !== button.dataset.delete));
       } catch (error) {
@@ -752,6 +770,112 @@ function pageAuth(mode, params) {
       const result = await api(isSignup ? "/auth/register" : "/auth/login", { method: "POST", body });
       session.set({ token: result.token, userId: result.userId, displayName: result.displayName });
       go(next.startsWith("/") ? next : "/");
+      refreshAdmin();
+    });
+  });
+}
+
+// ---------- admin: reported notes ----------
+
+// Asks the server whether this user is an admin, so the "Reports" link can be shown.
+// The server checks again on every admin request, so hiding the link is not the protection.
+async function refreshAdmin() {
+  const user = session.get();
+  if (!user) return;
+  try {
+    const me = await api("/auth/me");
+    if (Boolean(user.isAdmin) !== me.isAdmin) {
+      session.set({ ...user, isAdmin: me.isAdmin });
+      route();
+    }
+  } catch {
+    /* not critical: the user just won't see the admin link */
+  }
+}
+
+// Dangerous buttons need two clicks: the first asks, the second does it.
+function confirmButton(button, confirmLabel, action) {
+  button.addEventListener("click", async () => {
+    if (button.dataset.armed !== "yes") {
+      button.dataset.armed = "yes";
+      button.textContent = confirmLabel;
+      return;
+    }
+    button.disabled = true;
+    try {
+      await action();
+    } catch (error) {
+      button.disabled = false;
+      toast(error.message, "error");
+    }
+  });
+}
+
+async function pageAdmin(id) {
+  if (!session.get()) {
+    toast("Log in to continue.", "info");
+    go(`/login?next=${encodeURIComponent("/admin")}`);
+    return;
+  }
+
+  app.innerHTML = `
+    <h1>Reported notes</h1>
+    <p class="lede">Notes that students have flagged. Keep the note and dismiss the report, or remove the note for everyone.</p>
+    <div class="reports" id="reports"><p class="muted">Loading reports…</p></div>`;
+
+  const box = document.getElementById("reports");
+  let reports;
+  try {
+    reports = await api("/admin/reports");
+  } catch (error) {
+    if (id === renderId) box.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+
+  if (reports.length === 0) {
+    box.innerHTML = `
+      <div class="empty">
+        <h2>No open reports</h2>
+        <p class="muted">Nothing needs your attention right now.</p>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = reports.map((report) => `
+    <article class="report panel">
+      <h2><a href="#/note/${esc(report.materialId)}">${esc(report.materialTitle)}</a></h2>
+      <p class="muted">Written by ${esc(report.materialAuthorName)}</p>
+      <p class="report-preview">${esc(makePreview(report.materialPreview))}</p>
+      <p class="report-reason">
+        <strong>${esc(report.reporterName)} reported this on ${esc(formatDate(report.createdAtUtc))}</strong>
+        <span>${esc(report.reason)}</span>
+      </p>
+      <div class="form-actions">
+        <button type="button" class="btn" data-dismiss="${esc(report.id)}">Keep note, dismiss report</button>
+        <button type="button" class="btn btn-danger" data-remove="${esc(report.materialId)}">Remove note</button>
+      </div>
+    </article>`).join("");
+
+  box.querySelectorAll("[data-dismiss]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await api(`/admin/reports/${encodeURIComponent(button.dataset.dismiss)}/dismiss`, { method: "POST" });
+        toast("Report dismissed.");
+        route();
+      } catch (error) {
+        button.disabled = false;
+        toast(error.message, "error");
+      }
+    });
+  });
+
+  box.querySelectorAll("[data-remove]").forEach((button) => {
+    confirmButton(button, "Yes, remove this note", async () => {
+      await api(`/admin/materials/${encodeURIComponent(button.dataset.remove)}`, { method: "DELETE" });
+      toast("Note removed.");
+      route();
     });
   });
 }
@@ -778,6 +902,8 @@ function route() {
       return pageAuth("login", params);
     case "signup":
       return pageAuth("signup", params);
+    case "admin":
+      return pageAdmin(id);
     default:
       app.innerHTML = `
         <h1>Page not found</h1>
@@ -788,3 +914,4 @@ function route() {
 
 window.addEventListener("hashchange", route);
 route();
+refreshAdmin();

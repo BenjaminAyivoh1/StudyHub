@@ -24,4 +24,11 @@ public static class UserIdExtensions
 
         return null;
     }
+
+    /// <summary>The signed-in user's email from the token, or null.</summary>
+    public static string? GetEmail(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst("email")?.Value
+               ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+    }
 }
