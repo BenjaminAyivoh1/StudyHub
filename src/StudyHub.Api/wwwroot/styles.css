@@ -1,0 +1,543 @@
+/* StudyHub styles.
+   The look comes from a school exercise book: cool paper, blue ruled lines,
+   a red margin line down the page, and yellow highlighter for course codes. */
+
+:root {
+  --paper: #f9fbfa;
+  --ink: #17233f;
+  --ink-soft: #55607a;
+  --rule: #c5d6ec;
+  --margin-red: #d2414f;
+  --highlight: #ffe35a;
+  --white: #ffffff;
+  --danger: #a3202d;
+
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --line: 1.875rem; /* height of one ruled line */
+  --gutter: 2.5rem; /* space between the margin line and the content */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 1.3rem + 3.2vw, 3.25rem);
+  font-weight: 750;
+}
+
+h2 {
+  font-size: 1.375rem;
+  font-weight: 650;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0.5rem;
+  background: var(--ink);
+  color: var(--white);
+  padding: 0.5rem 0.75rem;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  left: 0.5rem;
+}
+
+/* ----- the page: one long sheet with a red margin line ----- */
+
+.page {
+  max-width: 62rem;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem var(--gutter);
+  border-left: 2px solid var(--margin-red);
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  padding-top: 2.5rem;
+}
+
+main:focus {
+  outline: none;
+}
+
+/* ----- header ----- */
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.125rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.site-nav a:hover {
+  text-decoration: underline;
+}
+
+.who {
+  color: var(--ink-soft);
+}
+
+/* ----- buttons ----- */
+
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.7rem 1.1rem;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.site-nav a.btn:hover {
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: #0d1730;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  color: var(--white);
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.link-button {
+  font: inherit;
+  font-weight: 500;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+/* ----- forms: fields are written on a ruled line ----- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field > span {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.field small {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  width: 100%;
+  padding: 0.5rem 0.125rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8490a8;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-bottom-color: var(--margin-red);
+  background: var(--white);
+}
+
+textarea {
+  resize: vertical;
+  min-height: calc(var(--line) * 10);
+  line-height: var(--line);
+  padding: 0 0.125rem;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  background-image: linear-gradient(to bottom, transparent calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px));
+  background-size: 100% var(--line);
+  background-attachment: local;
+}
+
+textarea.short {
+  min-height: calc(var(--line) * 3);
+}
+
+.form {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 40rem;
+  margin-top: 2rem;
+}
+
+.form-narrow {
+  max-width: 26rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 1.5rem;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* ----- messages ----- */
+
+.notice,
+.error {
+  margin-bottom: 1.5rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 4px solid var(--ink);
+  background: var(--white);
+  font-weight: 500;
+}
+
+.error {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
+.form .error {
+  margin-bottom: 0;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.lede {
+  margin-top: 0.75rem;
+  max-width: 34rem;
+  font-size: 1.1875rem;
+  color: var(--ink-soft);
+}
+
+/* ----- home: search ----- */
+
+.search {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  align-items: end;
+  gap: 1.5rem;
+  margin-top: 2.25rem;
+}
+
+.results {
+  margin-top: 3rem;
+}
+
+.results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.625rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+/* ----- home: the list of notes, one per ruled line ----- */
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.note-row a {
+  display: grid;
+  grid-template-columns: 7rem 1fr auto;
+  align-items: baseline;
+  gap: 0.25rem 1.25rem;
+  padding: 0.95rem 0.25rem;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none;
+}
+
+.note-row a:hover {
+  background: var(--white);
+}
+
+.note-row a:hover .note-title {
+  text-decoration: underline;
+}
+
+.note-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.note-meta {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}
+
+.note-tags {
+  grid-column: 2 / -1;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+/* Course codes are marked with highlighter. */
+.course {
+  justify-self: start;
+  padding: 0.05em 0.45em;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  background: linear-gradient(100deg, transparent 1%, var(--highlight) 4%, var(--highlight) 95%, transparent 99%);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.empty {
+  padding: 2rem 0.25rem;
+  max-width: 32rem;
+}
+
+.empty p + p {
+  margin-top: 0.75rem;
+}
+
+/* ----- one note, written on ruled paper ----- */
+
+.note-head .course {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.byline {
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.tag-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.tag-links a {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.ruled {
+  margin-top: 2rem;
+  max-width: 44rem;
+  padding-bottom: var(--line);
+  line-height: var(--line);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--rule);
+  background-image: linear-gradient(to bottom, transparent calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px));
+  background-size: 100% var(--line);
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.report-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 32rem;
+  margin-top: 1.5rem;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* ----- footer ----- */
+
+.site-footer {
+  margin-top: 4rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  max-width: 40rem;
+}
+
+/* ----- small screens ----- */
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: 1rem;
+  }
+
+  .page {
+    margin-left: 0.625rem;
+    padding-right: 1rem;
+  }
+
+  main {
+    padding-top: 1.75rem;
+  }
+
+  .site-nav {
+    gap: 0.875rem;
+  }
+
+  .search {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search .field-wide,
+  .search .btn {
+    grid-column: 1 / -1;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .note-row a {
+    grid-template-columns: 1fr;
+  }
+
+  .note-tags {
+    grid-column: auto;
+  }
+
+  .note-meta {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn,
+  input,
+  textarea {
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+}

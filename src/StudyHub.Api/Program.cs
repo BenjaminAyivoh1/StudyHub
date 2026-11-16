@@ -68,6 +68,10 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", false))
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
+// Serve the website (wwwroot/index.html, styles.css, app.js).
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
