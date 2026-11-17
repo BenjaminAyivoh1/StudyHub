@@ -1058,6 +1058,34 @@ select:focus-visible {
   cursor: pointer;
 }
 
+.setting-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+
+.game-settings select {
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+  background-color: transparent;
+}
+
+.game-settings select option {
+  color: var(--ink);
+}
+
+.game-settings select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.game-settings select:focus-visible {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-bottom-color: var(--highlight);
+}
+
 .setting-help {
   color: #c9d4ea;
   font-size: 0.9375rem;

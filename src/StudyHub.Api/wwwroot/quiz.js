@@ -7,7 +7,8 @@
 const SIGNALR_URL = "https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.12/signalr.min.js";
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 const SECONDS_CHOICES = [10, 20, 30, 45, 60];
-const AUTO_ADVANCE_SECONDS = 8; // pause after the answer is shown, when "move on automatically" is on
+const PAUSE_CHOICES = [3, 5, 8, 15]; // seconds to wait after the answer is shown, when "move on automatically" is on
+const DEFAULT_PAUSE = 8;
 
 let quizConnection = null; // the live connection to the server while hosting or playing
 let quizTimer = null; // the countdown that is running, if any
@@ -528,6 +529,7 @@ async function pageHost(quizId, id) {
   let answered = 0;
   let correctOnly = false; // scoring: false = speed and accuracy, true = correct answers only
   let autoAdvance = false; // move to the next question by itself after the answer is shown
+  let pauseSeconds = DEFAULT_PAUSE; // how long to show the answer before moving on
 
   const joinAddress = `${location.host}/#/join`;
 
@@ -557,7 +559,15 @@ async function pageHost(quizId, id) {
             <input type="checkbox" id="auto-advance" ${autoAdvance ? "checked" : ""}>
             Move on automatically
           </label>
-          <p class="setting-help">The next question starts ${AUTO_ADVANCE_SECONDS} seconds after the answer is shown. You can still pause or move on yourself.</p>
+          <label class="setting-inline">
+            <span>Show each answer for</span>
+            <select id="pause-seconds" ${autoAdvance ? "" : "disabled"}>
+              ${PAUSE_CHOICES.map((s) => `<option value="${s}" ${s === pauseSeconds ? "selected" : ""}>${s} seconds</option>`).join("")}
+            </select>
+          </label>
+          <p class="setting-help" id="pause-help">${autoAdvance
+            ? `The next question starts ${pauseSeconds} seconds after the answer is shown. You can still pause or move on yourself.`
+            : "Off: you move to each question yourself."}</p>
         </div>
       </fieldset>
       <button type="button" class="btn btn-accent btn-big" id="start-quiz" ${players.length === 0 ? "disabled" : ""}>Start quiz</button>`;
@@ -569,8 +579,21 @@ async function pageHost(quizId, id) {
         stage.querySelector("input[name=scoring]:checked").focus();
       });
     });
+    const pauseSelect = document.getElementById("pause-seconds");
+    const pauseHelp = document.getElementById("pause-help");
+    const describePause = () => {
+      pauseSelect.disabled = !autoAdvance;
+      pauseHelp.textContent = autoAdvance
+        ? `The next question starts ${pauseSeconds} seconds after the answer is shown. You can still pause or move on yourself.`
+        : "Off: you move to each question yourself.";
+    };
     document.getElementById("auto-advance").addEventListener("change", (event) => {
       autoAdvance = event.target.checked;
+      describePause();
+    });
+    pauseSelect.addEventListener("change", () => {
+      pauseSeconds = Number(pauseSelect.value);
+      describePause();
     });
     document.getElementById("start-quiz").addEventListener("click", startQuiz);
   };
@@ -638,7 +661,7 @@ async function pageHost(quizId, id) {
     if (autoAdvance) {
       const what = reveal.isLast ? "Final results" : "Next question";
       startCountdown(
-        AUTO_ADVANCE_SECONDS,
+        pauseSeconds,
         (left) => {
           const text = document.getElementById("auto-text");
           if (text) text.textContent = `${what} in ${plural(left, "second")}`;

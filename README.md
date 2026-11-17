@@ -124,7 +124,7 @@ Running games are kept in memory, not in the database. When the host shows the f
 The host chooses two settings in the lobby:
 
 - **Scoring.** *Speed and accuracy* (the default): a right answer earns 500 points plus up to 500 more for speed. The server measures the time, so a player cannot claim to have answered faster than they did. *Correct answers only*: one point per right answer, and speed doesn't matter.
-- **Move on automatically.** When it's on, the next question starts 8 seconds after the answer is shown. The host can pause it, and can always click Next themselves.
+- **Move on automatically.** When it's on, the next question starts a set time after the answer is shown: 3, 5, 8 (the default) or 15 seconds, chosen by the host. The host can pause it, and can always click Next themselves.
 
 ## How the code is organised
 
