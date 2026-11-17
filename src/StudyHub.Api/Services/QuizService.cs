@@ -28,7 +28,8 @@ public class QuizService(AppDbContext db) : IQuizService
             .AsNoTracking()
             .Where(q => q.OwnerId == userId)
             .OrderByDescending(q => q.CreatedAtUtc)
-            .Select(q => new QuizSummary(q.Id, q.Title, q.Questions.Count, q.CreatedAtUtc))
+            .Select(q => new QuizSummary(
+                q.Id, q.Title, q.Questions.Count, q.CreatedAtUtc, db.GameSessions.Count(s => s.QuizId == q.Id)))
             .ToListAsync(ct);
     }
 

@@ -13,6 +13,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Quiz> Quizzes => Set<Quiz>();
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
+    public DbSet<GameSession> GameSessions => Set<GameSession>();
+    public DbSet<GameResult> GameResults => Set<GameResult>();
+    public DbSet<GameQuestionStat> GameQuestionStats => Set<GameQuestionStat>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -116,6 +119,50 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(q => q.Quiz)
                 .WithMany(quiz => quiz.Questions)
                 .HasForeignKey(q => q.QuizId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GameSession>(e =>
+        {
+            e.Property(s => s.QuizTitle).HasMaxLength(200);
+            e.HasIndex(s => new { s.QuizId, s.PlayedAtUtc });
+            e.HasIndex(s => s.PlayedAtUtc);
+
+            // Deleting a quiz keeps its past games, so players don't lose their history.
+            e.HasOne(s => s.Quiz)
+                .WithMany()
+                .HasForeignKey(s => s.QuizId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(s => s.HostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GameResult>(e =>
+        {
+            e.Property(r => r.Nickname).HasMaxLength(50);
+            e.HasIndex(r => r.UserId);
+
+            e.HasOne(r => r.Session)
+                .WithMany(s => s.Results)
+                .HasForeignKey(r => r.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<GameQuestionStat>(e =>
+        {
+            e.Property(q => q.QuestionText).HasMaxLength(500);
+
+            e.HasOne(q => q.Session)
+                .WithMany(s => s.QuestionStats)
+                .HasForeignKey(q => q.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

@@ -17,13 +17,24 @@ public class GameRegistry
     private readonly ConcurrentDictionary<string, QuizGame> _games = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _codeByConnection = new();
 
-    public QuizGame Create(string hostConnectionId, string title, IEnumerable<GameQuestion> questions, DateTime now)
+    public QuizGame Create(
+        string hostConnectionId,
+        string title,
+        IEnumerable<GameQuestion> questions,
+        DateTime now,
+        Guid quizId = default,
+        Guid hostUserId = default)
     {
         RemoveOldGames(now);
+        var questionList = questions.ToList();
 
         while (true)
         {
-            var game = new QuizGame(NewCode(), hostConnectionId, title, questions, now);
+            var game = new QuizGame(NewCode(), hostConnectionId, title, questionList, now)
+            {
+                QuizId = quizId,
+                HostUserId = hostUserId
+            };
             if (_games.TryAdd(game.Code, game))
             {
                 _codeByConnection[hostConnectionId] = game.Code;

@@ -10,7 +10,7 @@ namespace StudyHub.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/quizzes")]
-public class QuizzesController(IQuizService quizzes) : ControllerBase
+public class QuizzesController(IQuizService quizzes, IGameHistoryService history) : ControllerBase
 {
     [HttpGet("mine")]
     public async Task<ActionResult<IReadOnlyList<QuizSummary>>> Mine(CancellationToken ct)
@@ -19,6 +19,11 @@ public class QuizzesController(IQuizService quizzes) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<QuizResponse>> Get(Guid id, CancellationToken ct)
         => Ok(await quizzes.GetAsync(User.GetUserId(), id, ct));
+
+    // How the quiz has been played. Only the student who wrote it can see this.
+    [HttpGet("{id:guid}/stats")]
+    public async Task<ActionResult<QuizStatsResponse>> Stats(Guid id, CancellationToken ct)
+        => Ok(await history.QuizStatsAsync(User.GetUserId(), id, ct));
 
     [HttpPost]
     public async Task<ActionResult<QuizResponse>> Create(QuizRequest request, CancellationToken ct)

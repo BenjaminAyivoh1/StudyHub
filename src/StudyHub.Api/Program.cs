@@ -44,6 +44,7 @@ builder.Services.AddScoped<IMaterialService, MaterialService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
 
 // Live quizzes: SignalR keeps a connection open to each browser, and the registry holds the running games.
 builder.Services.AddSignalR();

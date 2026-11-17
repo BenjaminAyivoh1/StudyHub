@@ -66,6 +66,111 @@ namespace StudyHub.Api.Data.Migrations
                     b.ToTable("Comments");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.GameQuestionStat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Answered")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Asked")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Correct")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("GameQuestionStats");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.GameResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nickname")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("GameResults");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.GameSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CorrectOnly")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PlayedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuestionsPlayed")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("QuizId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("QuizTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("PlayedAtUtc");
+
+                    b.HasIndex("QuizId", "PlayedAtUtc");
+
+                    b.ToTable("GameSessions");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
                 {
                     b.Property<Guid>("MaterialId")
@@ -311,6 +416,49 @@ namespace StudyHub.Api.Data.Migrations
                     b.Navigation("Material");
                 });
 
+            modelBuilder.Entity("StudyHub.Api.Domain.GameQuestionStat", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.GameSession", "Session")
+                        .WithMany("QuestionStats")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.GameResult", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.GameSession", "Session")
+                        .WithMany("Results")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyHub.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.GameSession", b =>
+                {
+                    b.HasOne("StudyHub.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyHub.Api.Domain.Quiz", "Quiz")
+                        .WithMany()
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Quiz");
+                });
+
             modelBuilder.Entity("StudyHub.Api.Domain.HelpfulVote", b =>
                 {
                     b.HasOne("StudyHub.Api.Domain.Material", "Material")
@@ -376,6 +524,13 @@ namespace StudyHub.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Material");
+                });
+
+            modelBuilder.Entity("StudyHub.Api.Domain.GameSession", b =>
+                {
+                    b.Navigation("QuestionStats");
+
+                    b.Navigation("Results");
                 });
 
             modelBuilder.Entity("StudyHub.Api.Domain.Material", b =>

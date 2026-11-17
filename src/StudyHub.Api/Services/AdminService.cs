@@ -13,6 +13,7 @@ public interface IAdminService
     Task DismissReportAsync(Guid reportId, CancellationToken ct = default);
     Task RemoveMaterialAsync(Guid materialId, CancellationToken ct = default);
     Task RemoveCommentAsync(Guid commentId, CancellationToken ct = default);
+    Task<SiteStatsResponse> GetStatsAsync(DateTime now, CancellationToken ct = default);
 }
 
 public class AdminService(AppDbContext db) : IAdminService
@@ -62,6 +63,23 @@ public class AdminService(AppDbContext db) : IAdminService
 
         db.Materials.Remove(material);
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Totals for the whole site. Deliberately no individual students' results.</summary>
+    public async Task<SiteStatsResponse> GetStatsAsync(DateTime now, CancellationToken ct = default)
+    {
+        var weekAgo = now.AddDays(-7);
+
+        return new SiteStatsResponse(
+            await db.Users.CountAsync(u => u.Email != SampleData.TeamEmail, ct),
+            await db.Materials.CountAsync(ct),
+            await db.Comments.CountAsync(ct),
+            await db.Quizzes.CountAsync(ct),
+            await db.GameSessions.CountAsync(ct),
+            await db.GameResults.CountAsync(ct),
+            await db.GameSessions.CountAsync(s => s.PlayedAtUtc >= weekAgo, ct),
+            await db.GameResults.CountAsync(r => r.Session.PlayedAtUtc >= weekAgo, ct),
+            await db.Reports.CountAsync(r => r.Status == ReportStatus.Open, ct));
     }
 
     public async Task RemoveCommentAsync(Guid commentId, CancellationToken ct = default)

@@ -34,6 +34,16 @@ public record PlayerResult(bool Answered, bool Correct, int CorrectIndex, int Po
 
 public record AnswerProgress(int Answered, int Players);
 
+/// <summary>How one player finished, for saving to history.</summary>
+public record PlayerSummary(string Name, Guid? UserId, int Score, int Correct, int Rank);
+
+/// <summary>How the players did on one question, for saving to history.</summary>
+public record QuestionSummary(int Position, string Text, int Asked, int Answered, int Correct);
+
+/// <summary>Everything about a finished game that is worth saving.</summary>
+public record GameSummary(
+    int QuestionsPlayed, bool CorrectOnly, IReadOnlyList<PlayerSummary> Players, IReadOnlyList<QuestionSummary> Questions);
+
 /// <summary>Something a player or host did that the game rules don't allow. The message is shown to them.</summary>
 public class GameException(string message) : Exception(message);
 
@@ -52,10 +62,12 @@ public class QuizGame
     /// <summary>Answers that arrive this long after the timer ends still count, to allow for slow connections.</summary>
     public static readonly TimeSpan Grace = TimeSpan.FromSeconds(1.5);
 
-    private sealed class Player(string name)
+    private sealed class Player(string name, Guid? userId)
     {
         public string Name { get; } = name;
+        public Guid? UserId { get; } = userId;
         public int Score { get; set; }
+        public int Correct { get; set; }
         public int? Answer { get; set; }
         public int Points { get; set; }
     }
@@ -63,6 +75,7 @@ public class QuizGame
     private readonly object _gate = new();
     private readonly List<GameQuestion> _questions;
     private readonly Dictionary<string, Player> _players = new();
+    private readonly List<QuestionSummary> _questionStats = new();
     private int _index = -1;
     private DateTime _questionStartedAt;
 
@@ -77,6 +90,10 @@ public class QuizGame
 
     public string Code { get; }
     public string HostConnectionId { get; }
+
+    /// <summary>The saved quiz this game is playing, and the account of the host. Used when saving results.</summary>
+    public Guid QuizId { get; init; }
+    public Guid HostUserId { get; init; }
     public string Title { get; }
     public DateTime CreatedAtUtc { get; }
     public GamePhase Phase { get; private set; } = GamePhase.Lobby;
@@ -113,7 +130,8 @@ public class QuizGame
         }
     }
 
-    public void AddPlayer(string connectionId, string? name)
+    /// <param name="userId">The player's account if they are logged in, so their result can be saved to their history.</param>
+    public void AddPlayer(string connectionId, string? name, Guid? userId = null)
     {
         var trimmed = (name ?? string.Empty).Trim();
 
@@ -139,7 +157,12 @@ public class QuizGame
                 throw new GameException("That name is taken. Pick another.");
             }
 
-            _players[connectionId] = new Player(trimmed);
+            if (userId is not null && _players.Values.Any(p => p.UserId == userId))
+            {
+                throw new GameException("You're already in this game on another tab or device.");
+            }
+
+            _players[connectionId] = new Player(trimmed, userId);
         }
     }
 
@@ -221,6 +244,7 @@ public class QuizGame
             player.Answer = optionIndex;
             if (optionIndex == question.CorrectIndex)
             {
+                player.Correct++;
                 player.Points = Scoring == ScoringMode.CorrectOnly ? 1 : PointsFor(elapsed, question.Seconds);
                 player.Score += player.Points;
             }
@@ -250,6 +274,13 @@ public class QuizGame
                     counts[answer]++;
                 }
             }
+
+            _questionStats.Add(new QuestionSummary(
+                _index,
+                question.Text,
+                _players.Count,
+                counts.Sum(),
+                counts[question.CorrectIndex]));
 
             return new RevealView(question.CorrectIndex, counts, Leaderboard(5), _index == _questions.Count - 1);
         }
@@ -287,6 +318,26 @@ public class QuizGame
         {
             Phase = GamePhase.Finished;
             return Leaderboard(_players.Count);
+        }
+    }
+
+    /// <summary>The final standings and per-question results, for saving once the game is over.</summary>
+    public GameSummary Summary()
+    {
+        lock (_gate)
+        {
+            var players = _players.Values
+                .OrderByDescending(p => p.Score)
+                .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(p => new PlayerSummary(
+                    p.Name,
+                    p.UserId,
+                    p.Score,
+                    p.Correct,
+                    1 + _players.Values.Count(other => other.Score > p.Score)))
+                .ToList();
+
+            return new GameSummary(_questionStats.Count, Scoring == ScoringMode.CorrectOnly, players, _questionStats.ToList());
         }
     }
 

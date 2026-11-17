@@ -16,6 +16,7 @@ A study-notes platform for university students. Students write and share notes, 
 - Comment on notes
 - Report a note (one open report per user per note)
 - An admin page for reviewing reports and removing notes or comments
+- Quiz history: finished games are saved. Logged-in players see their own results, the student who wrote a quiz sees how it has been played (times played, players, hardest questions), and admins see site-wide totals only
 - Live quizzes: write multiple-choice questions, host a game, and let classmates join on their phones with a code and a nickname. Faster right answers score more, with a live leaderboard
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
 - 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account. They are organised by topic with no course code, since codes differ between universities; students add their own
@@ -100,6 +101,9 @@ The app reads the `PORT` variable if the host sets one.
 | POST | `/api/quizzes` | yes | Create a quiz |
 | PUT | `/api/quizzes/{id}` | yes (owner only) | Replace a quiz |
 | DELETE | `/api/quizzes/{id}` | yes (owner only) | Delete a quiz |
+| GET | `/api/quizzes/{id}/stats` | yes (owner only) | How the quiz has been played |
+| GET | `/api/history/mine` | yes | The quiz games you have played |
+| GET | `/api/admin/stats` | admin | Site-wide totals |
 | GET | `/api/admin/reports` | admin | List open reports |
 | POST | `/api/admin/reports/{id}/dismiss` | admin | Keep the note and close the report |
 | DELETE | `/api/admin/materials/{id}` | admin | Remove any note |
@@ -115,7 +119,7 @@ Playing a quiz uses SignalR instead of ordinary requests. Each browser keeps a c
 - `Live/GameRegistry.cs` keeps the running games in memory and hands out the six-character codes.
 - `Live/QuizHub.cs` passes messages between the host, the players and the game.
 
-Running games are kept in memory, not in the database. That is simple and fast, and it means a game ends if the server restarts or the host leaves. Quizzes themselves are saved in the database.
+Running games are kept in memory, not in the database. When the host shows the final results, the game is saved (`GameSession`, `GameResult`, `GameQuestionStat`) by `Services/GameHistoryService.cs`. Players who joined while logged in have the result linked to their account; guests are saved by nickname only. A game that ends early because the host left is not saved. That is simple and fast, and it means a game ends if the server restarts or the host leaves. Quizzes themselves are saved in the database.
 
 The host chooses two settings in the lobby:
 
@@ -128,7 +132,7 @@ The host chooses two settings in the lobby:
 src/StudyHub.Api
   Controllers/   thin HTTP layer: read the request, call a service, return a result
   Services/      the actual rules (who may edit what, how search works)
-  Domain/        entities: User, Material, Tag, Report, HelpfulVote, Comment, Quiz, QuizQuestion
+  Domain/        entities: User, Material, Tag, Report, HelpfulVote, Comment, Quiz, QuizQuestion, GameSession (with its results)
   Data/          EF Core DbContext and migrations
   Security/      password hashing and JWT creation
   Contracts/     request and response shapes (what the API accepts and returns)

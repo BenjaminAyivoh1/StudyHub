@@ -13,6 +13,10 @@ namespace StudyHub.Api.Controllers;
 [Route("api/admin")]
 public class AdminController(IAdminService admin) : ControllerBase
 {
+    [HttpGet("stats")]
+    public async Task<ActionResult<SiteStatsResponse>> Stats(CancellationToken ct)
+        => Ok(await admin.GetStatsAsync(DateTime.UtcNow, ct));
+
     [HttpGet("reports")]
     public async Task<ActionResult<IReadOnlyList<AdminReportResponse>>> Reports(CancellationToken ct)
         => Ok(await admin.ListOpenReportsAsync(ct));

@@ -221,7 +221,7 @@ function renderNav() {
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
        <a href="#/quizzes">Quizzes</a>
-       ${user.isAdmin ? `<a href="#/admin">Reports</a>` : ""}
+       ${user.isAdmin ? `<a href="#/admin">Admin</a>` : ""}
        <a class="btn btn-primary" href="#/new">Write a note</a>
        <span class="who">${avatar(user.displayName)}<span>${esc(user.displayName)}</span></span>
        <button type="button" class="link-button" id="logout">Log out</button>`
@@ -828,6 +828,29 @@ function confirmButton(button, confirmLabel, action) {
   });
 }
 
+// Site-wide totals at the top of the admin page.
+async function loadSiteStats(id) {
+  const box = document.getElementById("site-stats");
+  let stats;
+  try {
+    stats = await api("/admin/stats");
+  } catch (error) {
+    if (id === renderId) box.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+
+  box.innerHTML = [
+    statCard("Students", stats.users),
+    statCard("Notes", stats.notes),
+    statCard("Comments", stats.comments),
+    statCard("Quizzes written", stats.quizzes),
+    statCard("Games played", stats.gamesPlayed, `${stats.gamesLast7Days} in the last 7 days`),
+    statCard("Players in games", stats.gamePlayers, `${stats.playersLast7Days} in the last 7 days`),
+    statCard("Open reports", stats.openReports),
+  ].join("");
+}
+
 async function pageAdmin(id) {
   if (!session.get()) {
     toast("Log in to continue.", "info");
@@ -836,10 +859,19 @@ async function pageAdmin(id) {
   }
 
   app.innerHTML = `
-    <h1>Reported notes</h1>
-    <p class="lede">Notes that students have flagged. Keep the note and dismiss the report, or remove the note for everyone.</p>
-    <div class="reports" id="reports"><p class="muted">Loading reports…</p></div>`;
+    <h1>Admin</h1>
+    <section class="admin-section">
+      <h2>Site activity</h2>
+      <p class="muted">Totals for the whole site. Individual students' results stay private.</p>
+      <div class="stat-cards" id="site-stats"><p class="muted">Loading totals…</p></div>
+    </section>
+    <section class="admin-section">
+      <h2>Reported notes</h2>
+      <p class="muted">Notes that students have flagged. Keep the note and dismiss the report, or remove the note for everyone.</p>
+      <div class="reports" id="reports"><p class="muted">Loading reports…</p></div>
+    </section>`;
 
+  loadSiteStats(id);
   const box = document.getElementById("reports");
   let reports;
   try {
@@ -927,11 +959,14 @@ function route() {
     case "quiz":
       if (parts[1] === "new") return pageQuizEditor(null, id);
       if (parts[1] === "edit" && parts[2]) return pageQuizEditor(parts[2], id);
+      if (parts[1] === "stats" && parts[2]) return pageQuizStats(parts[2], id);
       return go("/quizzes");
     case "host":
       return parts[1] ? pageHost(parts[1], id) : go("/quizzes");
     case "join":
       return pageJoin(params);
+    case "history":
+      return pageHistory(id);
     default:
       app.innerHTML = `
         <h1>Page not found</h1>

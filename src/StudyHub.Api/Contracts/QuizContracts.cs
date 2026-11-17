@@ -7,7 +7,7 @@ public record QuizQuestionDto(string Text, List<string> Options, int CorrectInde
 public record QuizRequest(string Title, List<QuizQuestionDto> Questions);
 
 /// <summary>A quiz in the owner's list.</summary>
-public record QuizSummary(Guid Id, string Title, int QuestionCount, DateTime CreatedAtUtc);
+public record QuizSummary(Guid Id, string Title, int QuestionCount, DateTime CreatedAtUtc, int TimesPlayed);
 
 /// <summary>A whole quiz, including the right answers. Only its owner ever receives this.</summary>
 public record QuizResponse(Guid Id, string Title, List<QuizQuestionDto> Questions, DateTime CreatedAtUtc);

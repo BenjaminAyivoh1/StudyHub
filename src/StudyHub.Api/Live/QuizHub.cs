@@ -8,7 +8,8 @@ namespace StudyHub.Api.Live;
 
 public record GameCreated(string Code, string Title, int QuestionCount);
 
-public record JoinedGame(string Code, string Title, int QuestionCount);
+/// <param name="ResultsSaved">True if the player is logged in, so the result will go into their history.</param>
+public record JoinedGame(string Code, string Title, int QuestionCount, bool ResultsSaved);
 
 public record FinalResult(int Rank, int Players, int Score, IReadOnlyList<PlayerScore> Leaderboard);
 
@@ -21,7 +22,11 @@ public record FinalResult(int Rank, int Players, int Score, IReadOnlyList<Player
 ///   to the host:    PlayersChanged, AnswerProgress
 ///   to the players: QuestionStarted, YourResult, GameFinished, GameEnded
 /// </summary>
-public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
+public class QuizHub(
+    GameRegistry games,
+    IQuizService quizzes,
+    IGameHistoryService history,
+    ILogger<QuizHub> logger) : Hub
 {
     // ----- host (must be logged in, and must own the quiz) -----
 
@@ -29,9 +34,11 @@ public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
     public async Task<GameCreated> CreateGame(Guid quizId)
     {
         QuizResponse quiz;
+        Guid hostUserId;
         try
         {
-            quiz = await quizzes.GetAsync(Context.User!.GetUserId(), quizId);
+            hostUserId = Context.User!.GetUserId();
+            quiz = await quizzes.GetAsync(hostUserId, quizId);
         }
         catch (AppException ex)
         {
@@ -39,7 +46,7 @@ public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
         }
 
         var questions = quiz.Questions.Select(q => new GameQuestion(q.Text, q.Options, q.CorrectIndex, q.Seconds));
-        var game = games.Create(Context.ConnectionId, quiz.Title, questions, DateTime.UtcNow);
+        var game = games.Create(Context.ConnectionId, quiz.Title, questions, DateTime.UtcNow, quiz.Id, hostUserId);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, game.Code);
         return new GameCreated(game.Code, game.Title, game.QuestionCount);
@@ -81,6 +88,16 @@ public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
         var leaderboard = game.Finish();
         var top = leaderboard.Take(5).ToList();
 
+        // Save the results. If saving fails, the game still ends normally for everyone.
+        try
+        {
+            await history.SaveAsync(game.QuizId, game.HostUserId, game.Title, game.Summary());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Couldn't save the results of game {Code}", game.Code);
+        }
+
         foreach (var connectionId in game.PlayerConnectionIds())
         {
             var result = game.ResultFor(connectionId);
@@ -97,13 +114,16 @@ public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
     public async Task<JoinedGame> JoinGame(string code, string name)
     {
         var game = Run(() => games.Require(code));
-        Run(() => game.AddPlayer(Context.ConnectionId, name));
+
+        // Players don't need an account, but if they are logged in their result is saved to their history.
+        var userId = Context.User?.GetUserIdOrNull();
+        Run(() => game.AddPlayer(Context.ConnectionId, name, userId));
 
         games.Track(Context.ConnectionId, game.Code);
         await Groups.AddToGroupAsync(Context.ConnectionId, game.Code);
         await Clients.Client(game.HostConnectionId).SendAsync("PlayersChanged", game.PlayerNames());
 
-        return new JoinedGame(game.Code, game.Title, game.QuestionCount);
+        return new JoinedGame(game.Code, game.Title, game.QuestionCount, userId is not null);
     }
 
     public async Task SubmitAnswer(string code, int optionIndex)

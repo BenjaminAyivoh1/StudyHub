@@ -122,6 +122,7 @@ async function pageQuizzes(id) {
     <div class="quiz-top">
       <a class="btn btn-primary" href="#/quiz/new">New quiz</a>
       <a class="btn" href="#/join">Join a game</a>
+      <a class="btn" href="#/history">Your quiz history</a>
     </div>
     <section class="quiz-list" id="quiz-list"><p class="muted">Loading your quizzes…</p></section>`;
 
@@ -149,10 +150,11 @@ async function pageQuizzes(id) {
     <article class="panel quiz-item">
       <div>
         <h2>${esc(quiz.title)}</h2>
-        <p class="muted">${plural(quiz.questionCount, "question")}, written ${esc(formatDate(quiz.createdAtUtc))}</p>
+        <p class="muted">${plural(quiz.questionCount, "question")}, written ${esc(formatDate(quiz.createdAtUtc))}, ${quiz.timesPlayed === 0 ? "not played yet" : `played ${plural(quiz.timesPlayed, "time")}`}</p>
       </div>
       <div class="form-actions">
         <a class="btn btn-primary" href="#/host/${esc(quiz.id)}">Host live</a>
+        <a class="btn" href="#/quiz/stats/${esc(quiz.id)}">Stats</a>
         <a class="btn" href="#/quiz/edit/${esc(quiz.id)}">Edit</a>
         <button type="button" class="btn btn-danger" data-delete-quiz="${esc(quiz.id)}">Delete</button>
       </div>
@@ -165,6 +167,151 @@ async function pageQuizzes(id) {
       route();
     });
   });
+}
+
+// ---------- page: how one of my quizzes has been played ----------
+
+async function pageQuizStats(quizId, id) {
+  if (!session.get()) {
+    toast("Log in to see your quiz stats.", "info");
+    go(`/login?next=${encodeURIComponent(`/quiz/stats/${quizId}`)}`);
+    return;
+  }
+
+  app.innerHTML = `
+    <a class="back" href="#/quizzes">Back to your quizzes</a>
+    <div id="stats-page"><p class="muted">Loading stats…</p></div>`;
+  const box = document.getElementById("stats-page");
+
+  let stats;
+  try {
+    stats = await api(`/quizzes/${encodeURIComponent(quizId)}/stats`);
+  } catch (error) {
+    if (id === renderId) box.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+
+  document.title = `${stats.title}: stats | StudyHub`;
+
+  if (stats.timesPlayed === 0) {
+    box.innerHTML = `
+      <h1>${esc(stats.title)}</h1>
+      <div class="empty stats-empty">
+        <h2>Nobody has played this quiz yet</h2>
+        <p class="muted">Host it live, and the results will show up here once you show the final scores.</p>
+        <a class="btn btn-primary" href="#/host/${esc(stats.quizId)}">Host live</a>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = `
+    <h1>${esc(stats.title)}</h1>
+    <p class="lede">How this quiz has gone so far.</p>
+
+    <section class="stat-cards" aria-label="Summary">
+      ${statCard("Times played", stats.timesPlayed)}
+      ${statCard("Players in total", stats.totalPlayers, stats.signedInPlayers > 0 ? `${plural(stats.signedInPlayers, "student")} with an account` : "")}
+      ${statCard("Average right answers", `${stats.averageCorrectPercent}%`)}
+      ${statCard("Last played", formatDate(stats.lastPlayedAtUtc))}
+    </section>
+
+    <section class="panel stats-section">
+      <h2>Questions, hardest first</h2>
+      <p class="muted">The share of players who got each question right, across every game.</p>
+      <ul class="question-stats">
+        ${stats.questions.map((q) => `
+          <li>
+            <div class="question-stat-head">
+              <span class="question-stat-text">${esc(q.text)}</span>
+              <span class="question-stat-value">${q.correctPercent}% right</span>
+            </div>
+            <div class="bar" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, q.correctPercent))}%"></span></div>
+            <p class="muted question-stat-detail">${q.correct} of ${q.asked} players${q.asked - q.answered > 0 ? `, ${q.asked - q.answered} didn't answer` : ""}</p>
+          </li>`).join("")}
+      </ul>
+    </section>
+
+    <section class="panel stats-section">
+      <h2>Recent games</h2>
+      <div class="table-scroll">
+        <table class="games-table">
+          <thead>
+            <tr><th scope="col">Date</th><th scope="col">Players</th><th scope="col">Winner</th><th scope="col">Scoring</th></tr>
+          </thead>
+          <tbody>
+            ${stats.sessions.map((s) => `
+              <tr>
+                <td>${esc(formatDate(s.playedAtUtc))}</td>
+                <td>${s.players}</td>
+                <td>${s.winner ? `${esc(s.winner)} (${s.winnerScore})` : "None"}</td>
+                <td>${s.correctOnly ? "Correct answers only" : "Speed and accuracy"}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function statCard(label, value, detail = "") {
+  return `
+    <div class="stat-card">
+      <p class="stat-card-label">${esc(label)}</p>
+      <p class="stat-card-value">${esc(value)}</p>
+      ${detail ? `<p class="stat-card-detail">${esc(detail)}</p>` : ""}
+    </div>`;
+}
+
+// ---------- page: the quizzes I've played ----------
+
+async function pageHistory(id) {
+  if (!session.get()) {
+    toast("Log in to see your quiz history.", "info");
+    go(`/login?next=${encodeURIComponent("/history")}`);
+    return;
+  }
+
+  app.innerHTML = `
+    <a class="back" href="#/quizzes">Back to quizzes</a>
+    <h1>Your quiz history</h1>
+    <p class="lede">Every quiz you've played while logged in. Only you can see this.</p>
+    <section class="history" id="history"><p class="muted">Loading your results…</p></section>`;
+  const box = document.getElementById("history");
+
+  let items;
+  try {
+    items = await api("/history/mine");
+  } catch (error) {
+    if (id === renderId) box.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+
+  if (items.length === 0) {
+    box.innerHTML = `
+      <div class="empty">
+        <h2>No games yet</h2>
+        <p class="muted">Join a quiz while you're logged in, and your score will be saved here.</p>
+        <a class="btn btn-primary" href="#/join">Join a quiz</a>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = `
+    <ul class="history-list">
+      ${items.map((item) => `
+        <li class="panel history-item">
+          <div class="history-main">
+            <h2>${esc(item.quizTitle)}</h2>
+            <p class="muted">${esc(formatDate(item.playedAtUtc))}, ${item.correctOnly ? "correct answers only" : "speed and accuracy"}</p>
+          </div>
+          <dl class="history-figures">
+            <div><dt>Place</dt><dd>${ordinal(item.rank)} of ${item.players}</dd></div>
+            <div><dt>Right answers</dt><dd>${item.correctCount} of ${item.questionsPlayed}</dd></div>
+            <div><dt>Score</dt><dd>${item.score}</dd></div>
+          </dl>
+        </li>`).join("")}
+    </ul>`;
 }
 
 // ---------- page: write or edit a quiz ----------
@@ -603,6 +750,9 @@ function pageJoin(params) {
     <section class="panel panel-narrow" id="play">
       <h1>Join a quiz</h1>
       <p class="lede">Enter the code on the host's screen.</p>
+      <p class="join-note">${user
+        ? `Logged in as ${esc(user.displayName)}. Your result will be saved to your <a href="#/history">quiz history</a>.`
+        : `Playing as a guest. <a href="#/login?next=${encodeURIComponent("/join")}">Log in</a> first if you want to keep your results.`}</p>
       <form class="form" id="join-form">
         <label class="field">
           <span>Game code</span>
@@ -754,6 +904,9 @@ function playGame(play, connection, joined, name) {
         <h2>Top scores</h2>
         ${leaderboardHtml(final.leaderboard)}
       </div>
+      <p class="muted">${joined.resultsSaved
+        ? `Saved to your <a href="#/history">quiz history</a>.`
+        : "You played as a guest, so this result wasn't saved. Log in before joining next time to keep your results."}</p>
       <div class="form-actions">
         <a class="btn btn-primary" href="#/join">Join another game</a>
         <a class="btn" href="#/">Browse notes</a>
