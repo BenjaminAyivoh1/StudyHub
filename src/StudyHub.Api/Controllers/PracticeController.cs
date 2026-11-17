@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StudyHub.Api.Common;
 using StudyHub.Api.Contracts;
 using StudyHub.Api.Services;
@@ -20,6 +21,7 @@ public class PracticeController(IPracticeService practice) : ControllerBase
         => Ok(await practice.TopicsAsync(ct));
 
     [HttpPost("start")]
+    [EnableRateLimiting(RateLimits.PracticeStart)]
     public async Task<ActionResult<PracticeStartResponse>> Start(PracticeStartRequest request, CancellationToken ct)
         => Ok(await practice.StartAsync(User.GetUserIdOrNull(), request, ct));
 

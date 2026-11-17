@@ -64,6 +64,7 @@ async function openQuizConnection() {
 function hubMessage(error) {
   const text = String(error && error.message ? error.message : error);
   if (/unauthorized/i.test(text)) return "Log in again to host a quiz.";
+  if (/429|too many requests/i.test(text)) return "Too many people are connecting from your network right now. Wait a minute and try again.";
   const match = text.match(/HubException:\s*([\s\S]*)$/);
   if (match) return match[1].trim();
   return "Couldn't reach the quiz server. Check your connection and try again.";

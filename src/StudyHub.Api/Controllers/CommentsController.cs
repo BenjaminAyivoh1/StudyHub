@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StudyHub.Api.Common;
 using StudyHub.Api.Contracts;
 using StudyHub.Api.Services;
@@ -16,6 +17,7 @@ public class CommentsController(ICommentService comments) : ControllerBase
 
     [Authorize]
     [HttpPost]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<CommentResponse>> Add(Guid materialId, CommentRequest request, CancellationToken ct)
     {
         var created = await comments.AddAsync(User.GetUserId(), materialId, request, ct);

@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StudyHub.Api.Common;
@@ -104,9 +105,27 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+// On Render the app sits behind a proxy, so every request seems to come from the proxy's address.
+// The proxy passes the visitor's real address in X-Forwarded-For; read it so the limits count each visitor.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // The proxy's own address isn't known in advance, so accept it from any address.
+    // Only the last address in the header (the one the proxy itself added) is used.
+#pragma warning disable ASPDEPR005
+    options.KnownNetworks.Clear();
+#pragma warning restore ASPDEPR005
+    options.KnownProxies.Clear();
+});
+
+// Limits on how many requests one person can send per minute. See Common/RateLimits.cs.
+builder.Services.Configure<RateLimitOptions>(builder.Configuration.GetSection(RateLimitOptions.Section));
+builder.Services.AddStudyHubRateLimits(builder.Configuration);
+
 var app = builder.Build();
 
 // ----- pipeline -----
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -140,10 +159,11 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseAuthentication();
+app.UseRateLimiter(); // after logging in is checked, so students can be counted by account
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<QuizHub>("/hubs/quiz");
+app.MapHub<QuizHub>("/hubs/quiz").RequireRateLimiting(RateLimits.Live);
 app.MapHealthChecks("/health");
 
 app.Run();

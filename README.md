@@ -79,6 +79,8 @@ Sign up on the site with your admin email **before** setting `Admin__Emails`, so
 
 The app reads the `PORT` variable if the host sets one.
 
+The request limits (see below) can be changed the same way, for example `RateLimits__LoginPerIp=100`, or switched off with `RateLimits__Enabled=false`.
+
 ## API
 
 | Method | Route | Auth | What it does |
@@ -165,10 +167,21 @@ tests/StudyHub.Tests   unit tests for the services and the password hasher
 
 - [x] Phase 1: notes library, built and deployed (still to do: grow real users)
 - [x] Phase 2: live quiz with SignalR (a host writes a quiz, classmates join with a code), quiz history and stats, and solo practice
-- [ ] Phase 3: rate limiting on the public endpoints
+- [x] Phase 3: rate limiting on the public endpoints
 - [ ] Phase 4: study assistant that generates practice questions from notes
 
 ## Security notes
 
 - `appsettings.Development.json` contains a development-only signing key. Real deployments must set `Jwt__Key` (32+ random characters) as an environment variable and never commit it.
 - Passwords are never stored in plain text.
+- **Rate limits** (`Common/RateLimits.cs`) cap how many requests one person can send per minute. Anything over the limit gets `429 Too Many Requests` with a `Retry-After` header, and the website shows "Too many requests. Wait a minute and try again."
+
+  | What | Default limit per minute | Counted by |
+  |---|---|---|
+  | Any API request | 300 logged in, 1000 not logged in | account, or internet address |
+  | Log in and sign up | 60 | internet address |
+  | New or edited notes, comments, reports, votes, quizzes | 30 | account |
+  | Starting a practice run | 30 | account, or internet address |
+  | Opening a live quiz connection | 300 | internet address |
+
+  Logged-in students are counted by account, because a whole class on campus Wi-Fi often shares one internet address. That's also why the limits for visitors are generous. Behind Render's proxy the app reads the visitor's real address from the `X-Forwarded-For` header.

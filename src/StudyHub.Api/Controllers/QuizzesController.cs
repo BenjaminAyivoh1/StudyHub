@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StudyHub.Api.Common;
 using StudyHub.Api.Contracts;
 using StudyHub.Api.Services;
@@ -26,6 +27,7 @@ public class QuizzesController(IQuizService quizzes, IGameHistoryService history
         => Ok(await history.QuizStatsAsync(User.GetUserId(), id, ct));
 
     [HttpPost]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<QuizResponse>> Create(QuizRequest request, CancellationToken ct)
     {
         var created = await quizzes.CreateAsync(User.GetUserId(), request, ct);
@@ -33,6 +35,7 @@ public class QuizzesController(IQuizService quizzes, IGameHistoryService history
     }
 
     [HttpPut("{id:guid}")]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<QuizResponse>> Update(Guid id, QuizRequest request, CancellationToken ct)
         => Ok(await quizzes.UpdateAsync(User.GetUserId(), id, request, ct));
 

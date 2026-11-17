@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StudyHub.Api.Common;
 using StudyHub.Api.Contracts;
 using StudyHub.Api.Services;
@@ -23,6 +24,7 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
 
     [Authorize]
     [HttpPost]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<MaterialResponse>> Create(MaterialRequest request, CancellationToken ct)
     {
         var created = await materials.CreateAsync(User.GetUserId(), request, ct);
@@ -31,6 +33,7 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
 
     [Authorize]
     [HttpPut("{id:guid}")]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<MaterialResponse>> Update(Guid id, MaterialRequest request, CancellationToken ct)
         => Ok(await materials.UpdateAsync(User.GetUserId(), id, request, ct));
 
@@ -44,6 +47,7 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
 
     [Authorize]
     [HttpPost("{id:guid}/reports")]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<IActionResult> Report(Guid id, ReportRequest request, CancellationToken ct)
     {
         await materials.ReportAsync(User.GetUserId(), id, request, ct);
@@ -52,11 +56,13 @@ public class MaterialsController(IMaterialService materials) : ControllerBase
 
     [Authorize]
     [HttpPut("{id:guid}/helpful")]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<HelpfulResponse>> MarkHelpful(Guid id, CancellationToken ct)
         => Ok(await materials.MarkHelpfulAsync(User.GetUserId(), id, ct));
 
     [Authorize]
     [HttpDelete("{id:guid}/helpful")]
+    [EnableRateLimiting(RateLimits.Writes)]
     public async Task<ActionResult<HelpfulResponse>> UnmarkHelpful(Guid id, CancellationToken ct)
         => Ok(await materials.UnmarkHelpfulAsync(User.GetUserId(), id, ct));
 }

@@ -16,11 +16,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\StudyHub.Api\StudyHub.Api.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
-<ItemGroup>
-  <Using Include="Xunit" />
-</ItemGroup>
+  <!-- The tests use a few ASP.NET Core types, such as the rate limiter. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\StudyHub.Api\StudyHub.Api.csproj" />
+  </ItemGroup>
 
 </Project>
