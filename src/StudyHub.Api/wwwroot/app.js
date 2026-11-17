@@ -941,5 +941,17 @@ function route() {
 }
 
 window.addEventListener("hashchange", route);
+
+// Clicking a link to the page you're already on doesn't change the address, so the
+// browser does nothing. Redraw the page instead, e.g. "Join a quiz" after a game ends.
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href^='#']");
+  if (!link || event.defaultPrevented || event.button !== 0) return;
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  if (link.getAttribute("href") === location.hash) {
+    event.preventDefault();
+    route();
+  }
+});
 route();
 refreshAdmin();

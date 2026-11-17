@@ -1003,6 +1003,83 @@ select:focus-visible {
   font-weight: 600;
 }
 
+/* Host lobby settings */
+
+.game-settings {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0.5rem 0 0;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.game-settings legend {
+  padding: 0 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.setting {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.setting-label {
+  font-weight: 650;
+}
+
+.setting-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.setting-choices label,
+.setting-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.game-settings input[type="radio"],
+.game-settings input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 0;
+  accent-color: var(--highlight);
+  cursor: pointer;
+}
+
+.setting-help {
+  color: #c9d4ea;
+  font-size: 0.9375rem;
+}
+
+.game-settings :focus-visible {
+  outline-color: var(--highlight);
+}
+
+.auto-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #c9d4ea;
+}
+
+.play-hint {
+  font-size: 0.9375rem;
+}
+
 .btn-big {
   padding: 0.9rem 1.75rem;
   font-size: 1.1875rem;

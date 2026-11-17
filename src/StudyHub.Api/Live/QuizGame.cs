@@ -8,11 +8,21 @@ public enum GamePhase
     Finished
 }
 
+/// <summary>How right answers are scored. The host picks this in the lobby.</summary>
+public enum ScoringMode
+{
+    /// <summary>500 points for a right answer, plus up to 500 more for answering quickly.</summary>
+    Speed,
+
+    /// <summary>One point for each right answer. Speed doesn't matter.</summary>
+    CorrectOnly
+}
+
 /// <summary>A question as the game holds it, including the right answer.</summary>
 public record GameQuestion(string Text, IReadOnlyList<string> Options, int CorrectIndex, int Seconds);
 
 /// <summary>What players are shown when a question starts. It never includes the right answer.</summary>
-public record QuestionView(int Number, int Total, string Text, IReadOnlyList<string> Options, int Seconds);
+public record QuestionView(int Number, int Total, string Text, IReadOnlyList<string> Options, int Seconds, bool SpeedCounts);
 
 public record PlayerScore(string Name, int Score);
 
@@ -70,6 +80,7 @@ public class QuizGame
     public string Title { get; }
     public DateTime CreatedAtUtc { get; }
     public GamePhase Phase { get; private set; } = GamePhase.Lobby;
+    public ScoringMode Scoring { get; private set; } = ScoringMode.Speed;
     public int QuestionCount => _questions.Count;
 
     public IReadOnlyList<string> PlayerNames()
@@ -85,6 +96,20 @@ public class QuizGame
         lock (_gate)
         {
             return _players.Keys.ToList();
+        }
+    }
+
+    /// <summary>The host can change how answers are scored, but only before the first question.</summary>
+    public void SetScoring(ScoringMode mode)
+    {
+        lock (_gate)
+        {
+            if (Phase != GamePhase.Lobby)
+            {
+                throw new GameException("Scoring can only be changed before the quiz starts.");
+            }
+
+            Scoring = mode;
         }
     }
 
@@ -157,7 +182,8 @@ public class QuizGame
             }
 
             var question = _questions[_index];
-            return new QuestionView(_index + 1, _questions.Count, question.Text, question.Options, question.Seconds);
+            return new QuestionView(
+                _index + 1, _questions.Count, question.Text, question.Options, question.Seconds, Scoring == ScoringMode.Speed);
         }
     }
 
@@ -195,7 +221,7 @@ public class QuizGame
             player.Answer = optionIndex;
             if (optionIndex == question.CorrectIndex)
             {
-                player.Points = PointsFor(elapsed, question.Seconds);
+                player.Points = Scoring == ScoringMode.CorrectOnly ? 1 : PointsFor(elapsed, question.Seconds);
                 player.Score += player.Points;
             }
 

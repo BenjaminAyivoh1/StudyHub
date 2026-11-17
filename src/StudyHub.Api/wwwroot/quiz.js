@@ -7,6 +7,7 @@
 const SIGNALR_URL = "https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.12/signalr.min.js";
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 const SECONDS_CHOICES = [10, 20, 30, 45, 60];
+const AUTO_ADVANCE_SECONDS = 8; // pause after the answer is shown, when "move on automatically" is on
 
 let quizConnection = null; // the live connection to the server while hosting or playing
 let quizTimer = null; // the countdown that is running, if any
@@ -378,6 +379,8 @@ async function pageHost(quizId, id) {
   let players = [];
   let question = null;
   let answered = 0;
+  let correctOnly = false; // scoring: false = speed and accuracy, true = correct answers only
+  let autoAdvance = false; // move to the next question by itself after the answer is shown
 
   const joinAddress = `${location.host}/#/join`;
 
@@ -390,9 +393,55 @@ async function pageHost(quizId, id) {
       <ul class="player-chips" id="player-chips">
         ${players.map((name) => `<li>${esc(name)}</li>`).join("")}
       </ul>
+      <fieldset class="game-settings">
+        <legend>Game settings</legend>
+        <div class="setting">
+          <p class="setting-label" id="scoring-label">Scoring</p>
+          <div class="setting-choices" role="radiogroup" aria-labelledby="scoring-label">
+            <label><input type="radio" name="scoring" value="speed" ${correctOnly ? "" : "checked"}> Speed and accuracy</label>
+            <label><input type="radio" name="scoring" value="correct" ${correctOnly ? "checked" : ""}> Correct answers only</label>
+          </div>
+          <p class="setting-help">${correctOnly
+            ? "One point for each right answer. Speed doesn't matter."
+            : "500 points for a right answer, plus up to 500 more for answering quickly."}</p>
+        </div>
+        <div class="setting">
+          <label class="setting-toggle">
+            <input type="checkbox" id="auto-advance" ${autoAdvance ? "checked" : ""}>
+            Move on automatically
+          </label>
+          <p class="setting-help">The next question starts ${AUTO_ADVANCE_SECONDS} seconds after the answer is shown. You can still pause or move on yourself.</p>
+        </div>
+      </fieldset>
       <button type="button" class="btn btn-accent btn-big" id="start-quiz" ${players.length === 0 ? "disabled" : ""}>Start quiz</button>`;
-    document.getElementById("start-quiz").addEventListener("click", nextQuestion);
+
+    stage.querySelectorAll("input[name=scoring]").forEach((input) => {
+      input.addEventListener("change", () => {
+        correctOnly = input.value === "correct";
+        drawLobby();
+        stage.querySelector("input[name=scoring]:checked").focus();
+      });
+    });
+    document.getElementById("auto-advance").addEventListener("change", (event) => {
+      autoAdvance = event.target.checked;
+    });
+    document.getElementById("start-quiz").addEventListener("click", startQuiz);
   };
+
+  // Sends the chosen scoring to the server, then shows the first question.
+  async function startQuiz() {
+    if (phase !== "lobby") return;
+    const button = document.getElementById("start-quiz");
+    button.disabled = true;
+    try {
+      await connection.invoke("SetScoring", game.code, correctOnly);
+    } catch (error) {
+      button.disabled = false;
+      toast(hubMessage(error), "error");
+      return;
+    }
+    nextQuestion();
+  }
 
   const optionsHtml = (reveal) => `
     <ul class="stage-options">
@@ -426,8 +475,37 @@ async function pageHost(quizId, id) {
         <h2>${reveal.isLast ? "Top scores" : "Scores so far"}</h2>
         ${leaderboardHtml(reveal.leaderboard)}
       </div>
-      <button type="button" class="btn btn-accent btn-big" id="next-step">${reveal.isLast ? "Show final results" : "Next question"}</button>`;
-    document.getElementById("next-step").addEventListener("click", reveal.isLast ? finishGame : nextQuestion);
+      <button type="button" class="btn btn-accent btn-big" id="next-step">${reveal.isLast ? "Show final results" : "Next question"}</button>
+      ${autoAdvance ? `
+        <p class="auto-line" id="auto-line">
+          <span id="auto-text"></span>
+          <button type="button" class="btn" id="auto-pause">Pause</button>
+        </p>` : ""}`;
+
+    const next = reveal.isLast ? finishGame : nextQuestion;
+    document.getElementById("next-step").addEventListener("click", () => {
+      stopCountdown();
+      next();
+    });
+
+    if (autoAdvance) {
+      const what = reveal.isLast ? "Final results" : "Next question";
+      startCountdown(
+        AUTO_ADVANCE_SECONDS,
+        (left) => {
+          const text = document.getElementById("auto-text");
+          if (text) text.textContent = `${what} in ${plural(left, "second")}`;
+        },
+        next);
+
+      // Pausing turns auto-advance off for the rest of the game; the host moves on by hand.
+      document.getElementById("auto-pause").addEventListener("click", () => {
+        stopCountdown();
+        autoAdvance = false;
+        document.getElementById("auto-line").remove();
+        document.getElementById("next-step").focus();
+      });
+    }
   };
 
   async function nextQuestion() {
@@ -480,9 +558,11 @@ async function pageHost(quizId, id) {
     }
     phase = "finished";
     leaveQuizPage();
+    const scoringNote = correctOnly ? "Scored on correct answers only" : "Scored on speed and accuracy";
     stage.innerHTML = `
       <p class="stage-label">${esc(game.title)}</p>
       <h1 class="stage-title">Final results</h1>
+      <p class="stage-label">${scoringNote}</p>
       <div class="stage-board stage-board-final">${leaderboardHtml(final)}</div>
       <div class="form-actions stage-actions">
         <a class="btn btn-accent" href="#/quizzes">Back to your quizzes</a>
@@ -615,7 +695,8 @@ function playGame(play, connection, joined, name) {
             <span>${esc(text)}</span>
           </button>`).join("")}
       </div>
-      <p class="play-status" id="play-status" role="status"></p>`);
+      <p class="play-status" id="play-status" role="status"></p>
+      <p class="muted play-hint">${view.speedCounts ? "Faster right answers score more." : "Only right answers count. Take your time."}</p>`);
 
     play.querySelectorAll(".answer").forEach((button) => {
       button.addEventListener("click", async () => {
@@ -655,9 +736,9 @@ function playGame(play, connection, joined, name) {
     show(`
       <p class="stage-label">${question ? `Question ${question.number} of ${question.total}` : ""}</p>
       <h1 class="result-heading ${result.correct ? "is-right" : "is-wrong"}">${heading}</h1>
-      <p class="result-points">${result.correct ? `+${result.points} points` : "0 points"}</p>
+      <p class="result-points">${result.correct ? `+${plural(result.points, "point")}` : "0 points"}</p>
       ${answerText ? `<p class="lede">The answer was ${esc(answerText)}</p>` : ""}
-      <p class="score-line"><strong>${result.score}</strong> points, ${ordinal(result.rank)} of ${result.players}</p>
+      <p class="score-line"><strong>${result.score}</strong> ${result.score === 1 ? "point" : "points"}, ${ordinal(result.rank)} of ${result.players}</p>
       <p class="muted">Watch the host's screen for the next question.</p>`);
   });
 
@@ -668,13 +749,14 @@ function playGame(play, connection, joined, name) {
     show(`
       <p class="stage-label">${esc(joined.title)}</p>
       <h1>${ordinal(final.rank)} place</h1>
-      <p class="score-line"><strong>${final.score}</strong> points, out of ${plural(final.players, "player")}</p>
+      <p class="score-line"><strong>${final.score}</strong> ${final.score === 1 ? "point" : "points"}, out of ${plural(final.players, "player")}</p>
       <div class="stage-board">
         <h2>Top scores</h2>
         ${leaderboardHtml(final.leaderboard)}
       </div>
       <div class="form-actions">
-        <a class="btn btn-primary" href="#/">Browse notes</a>
+        <a class="btn btn-primary" href="#/join">Join another game</a>
+        <a class="btn" href="#/">Browse notes</a>
       </div>`);
   });
 

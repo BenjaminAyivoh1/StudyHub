@@ -224,4 +224,46 @@ public class QuizGameTests
 
         Assert.Null(registry.Find(old.Code));
     }
+
+    [Fact]
+    public void Speed_scoring_is_the_default_and_players_are_told()
+    {
+        var game = NewGame();
+        game.AddPlayer("c1", "Ama");
+
+        var view = game.StartNextQuestion(Start);
+
+        Assert.Equal(ScoringMode.Speed, game.Scoring);
+        Assert.True(view.SpeedCounts);
+    }
+
+    [Fact]
+    public void Correct_only_scoring_gives_one_point_whatever_the_speed()
+    {
+        var game = NewGame();
+        game.AddPlayer("c1", "Ama");
+        game.AddPlayer("c2", "Kofi");
+        game.SetScoring(ScoringMode.CorrectOnly);
+
+        var view = game.StartNextQuestion(Start);
+        game.SubmitAnswer("c1", 1, Start);
+        game.SubmitAnswer("c2", 1, Start.AddSeconds(19));
+        game.Reveal();
+
+        Assert.False(view.SpeedCounts);
+        Assert.Equal(1, game.ResultFor("c1").Points);
+        Assert.Equal(1, game.ResultFor("c2").Score);
+        Assert.Equal(1, game.ResultFor("c2").Rank); // a tie: both are first
+    }
+
+    [Fact]
+    public void Scoring_cannot_change_once_the_quiz_has_started()
+    {
+        var game = NewGame();
+        game.AddPlayer("c1", "Ama");
+        game.StartNextQuestion(Start);
+
+        Assert.Throws<GameException>(() => game.SetScoring(ScoringMode.CorrectOnly));
+        Assert.Equal(ScoringMode.Speed, game.Scoring);
+    }
 }

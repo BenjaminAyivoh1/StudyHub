@@ -45,6 +45,14 @@ public class QuizHub(GameRegistry games, IQuizService quizzes) : Hub
         return new GameCreated(game.Code, game.Title, game.QuestionCount);
     }
 
+    /// <summary>Speed scoring (the default) or correct answers only. Only allowed in the lobby.</summary>
+    public Task SetScoring(string code, bool correctOnly)
+    {
+        var game = HostGame(code);
+        Run(() => game.SetScoring(correctOnly ? ScoringMode.CorrectOnly : ScoringMode.Speed));
+        return Task.CompletedTask;
+    }
+
     public async Task<QuestionView> StartQuestion(string code)
     {
         var game = HostGame(code);

@@ -117,7 +117,10 @@ Playing a quiz uses SignalR instead of ordinary requests. Each browser keeps a c
 
 Running games are kept in memory, not in the database. That is simple and fast, and it means a game ends if the server restarts or the host leaves. Quizzes themselves are saved in the database.
 
-Scoring: a right answer earns 500 points plus up to 500 more for speed. The server measures the time, so a player cannot claim to have answered faster than they did.
+The host chooses two settings in the lobby:
+
+- **Scoring.** *Speed and accuracy* (the default): a right answer earns 500 points plus up to 500 more for speed. The server measures the time, so a player cannot claim to have answered faster than they did. *Correct answers only*: one point per right answer, and speed doesn't matter.
+- **Move on automatically.** When it's on, the next question starts 8 seconds after the answer is shown. The host can pause it, and can always click Next themselves.
 
 ## How the code is organised
 
