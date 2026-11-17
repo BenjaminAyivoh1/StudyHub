@@ -6,14 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Exact versions, so every build (yours, GitHub's and Render's) uses the same packages. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.*" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.*">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
+    <!-- Npgsql on its own would bring an older copy of this; naming it keeps all EF Core parts on one version. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.15" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
 </Project>
