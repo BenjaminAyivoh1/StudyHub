@@ -227,7 +227,7 @@ public class GameHistoryTests
         var stats = await new AdminService(db).GetStatsAsync(DateTime.UtcNow);
 
         Assert.Equal(2, stats.Users);
-        Assert.Equal(15, stats.Notes);
+        Assert.Equal(SampleData.TotalNotes, stats.Notes);
         Assert.Equal(1, stats.Quizzes);
         Assert.Equal(2, stats.GamesPlayed);
         Assert.Equal(4, stats.GamePlayers);

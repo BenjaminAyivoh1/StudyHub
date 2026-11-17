@@ -17,8 +17,9 @@ public class SampleDataTests
 
         var added = await SampleData.SeedAsync(db, new Pbkdf2PasswordHasher());
 
-        Assert.Equal(15, added);
-        Assert.Equal(15, await db.Materials.CountAsync());
+        Assert.Equal(SampleData.TotalNotes, added);
+        Assert.Equal(SampleData.TotalNotes, await db.Materials.CountAsync());
+        Assert.True(SampleData.TotalNotes >= 30);
 
         var team = await db.Users.SingleAsync();
         Assert.Equal(SampleData.TeamName, team.DisplayName);
@@ -38,7 +39,7 @@ public class SampleDataTests
         var second = await SampleData.SeedAsync(db, hasher);
 
         Assert.Equal(0, second);
-        Assert.Equal(15, await db.Materials.CountAsync());
+        Assert.Equal(SampleData.TotalNotes, await db.Materials.CountAsync());
         Assert.Equal(1, await db.Users.CountAsync());
     }
 
@@ -90,7 +91,61 @@ public class SampleDataTests
         await SampleData.SeedAsync(db, hasher);
 
         Assert.Equal(0, await db.Materials.CountAsync(m => m.CourseCode != null));
-        Assert.Equal(15, await db.Materials.CountAsync());
+        Assert.Equal(SampleData.TotalNotes, await db.Materials.CountAsync());
+    }
+
+    [Fact]
+    public async Task A_site_set_up_earlier_receives_the_newer_batch_of_notes()
+    {
+        await using var db = TestDb.Create();
+        var hasher = new Pbkdf2PasswordHasher();
+        await SampleData.SeedAsync(db, hasher);
+
+        // Make it look like a site that was set up before the second batch existed.
+        var newer = SampleData.BatchTitles[1];
+        db.Materials.RemoveRange(db.Materials.Where(m => newer.Contains(m.Title)));
+        await db.SaveChangesAsync();
+
+        var added = await SampleData.SeedAsync(db, hasher);
+
+        Assert.Equal(newer.Count, added);
+        Assert.Equal(SampleData.TotalNotes, await db.Materials.CountAsync());
+        Assert.Equal(1, await db.Users.CountAsync());
+    }
+
+    [Fact]
+    public async Task A_starter_note_removed_by_an_admin_does_not_come_back()
+    {
+        await using var db = TestDb.Create();
+        var hasher = new Pbkdf2PasswordHasher();
+        await SampleData.SeedAsync(db, hasher);
+
+        var removed = await db.Materials.FirstAsync(m => m.Title == SampleData.BatchTitles[1][0]);
+        db.Materials.Remove(removed);
+        await db.SaveChangesAsync();
+
+        var added = await SampleData.SeedAsync(db, hasher);
+
+        Assert.Equal(0, added);
+        Assert.False(await db.Materials.AnyAsync(m => m.Title == removed.Title));
+    }
+
+    [Fact]
+    public async Task Starter_notes_cover_subjects_beyond_computing()
+    {
+        await using var db = TestDb.Create();
+        await SampleData.SeedAsync(db, new Pbkdf2PasswordHasher());
+        var service = new MaterialService(db);
+
+        foreach (var tag in new[] { "biology", "chemistry", "physics", "maths", "economics", "accounting", "education", "history" })
+        {
+            var found = await service.SearchAsync(new MaterialQuery(Tag: tag));
+            Assert.True(found.TotalCount > 0, $"expected a starter note tagged {tag}");
+        }
+
+        // Every title is different, so batches can be told apart.
+        var titles = SampleData.BatchTitles.SelectMany(batch => batch).ToList();
+        Assert.Equal(titles.Count, titles.Distinct().Count());
     }
 
     [Theory]

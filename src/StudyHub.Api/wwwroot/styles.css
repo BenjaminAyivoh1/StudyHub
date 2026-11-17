@@ -30,6 +30,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(23, 35, 63, 0.08); /* a faint flash on tap, not bright blue */
 }
 
 body {
@@ -1866,6 +1867,205 @@ select:focus-visible {
 
 .history-item.is-practice {
   border-left: 4px solid var(--highlight);
+}
+
+
+/* ----- phones: menu button, tighter layouts ----- */
+
+.menu-toggle {
+  display: none;
+}
+
+.site-nav a[aria-current="page"]:not(.btn) {
+  text-decoration: underline;
+  text-decoration-color: var(--margin-red);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.35em;
+}
+
+@media (max-width: 760px) {
+  .header-inner {
+    gap: 0.5rem 1rem;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.9rem;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  /* three bars that turn into a cross when the menu is open */
+  .menu-icon,
+  .menu-icon::before,
+  .menu-icon::after {
+    display: block;
+    width: 1.1rem;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  .menu-icon {
+    position: relative;
+  }
+
+  .menu-icon::before,
+  .menu-icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+  }
+
+  .menu-icon::before {
+    top: -6px;
+  }
+
+  .menu-icon::after {
+    top: 6px;
+  }
+
+  .menu-open .menu-icon {
+    background: transparent;
+  }
+
+  .menu-open .menu-icon::before {
+    top: 0;
+    transform: rotate(45deg);
+  }
+
+  .menu-open .menu-icon::after {
+    top: 0;
+    transform: rotate(-45deg);
+  }
+
+  .site-nav {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding-bottom: 0.5rem;
+    border-top: 1px solid var(--edge);
+  }
+
+  .menu-open .site-nav {
+    display: flex;
+  }
+
+  .site-nav > a:not(.btn),
+  .site-nav > .link-button {
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid var(--edge);
+    text-align: left;
+  }
+
+  .site-nav a[aria-current="page"]:not(.btn) {
+    text-decoration: none;
+    box-shadow: inset 4px 0 0 var(--margin-red);
+    padding-left: 0.9rem;
+  }
+
+  .site-nav > .btn {
+    margin: 0.85rem 0 0.35rem;
+    text-align: center;
+  }
+
+  .site-nav > .who {
+    order: -1;
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid var(--edge);
+  }
+
+  /* Two stat cards per row instead of one long column. */
+  .stat-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .stat-card-label {
+    font-size: 0.875rem;
+  }
+
+  .stat-card-value {
+    font-size: 1.5rem;
+  }
+
+  /* Quiz buttons in a tidy grid: the main action across the top, the rest in pairs. */
+  .quiz-top,
+  .quiz-item .form-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    width: 100%;
+  }
+
+  .quiz-top .btn,
+  .quiz-item .form-actions .btn {
+    text-align: center;
+  }
+
+  .quiz-item .form-actions > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .quiz-item {
+    padding: 1.1rem 1.1rem;
+  }
+
+  .question-edit {
+    padding: 1rem 0.9rem;
+  }
+
+  /* Long note titles shouldn't fill the whole first screen. */
+  h1 {
+    font-size: clamp(1.75rem, 1.2rem + 3vw, 2.25rem);
+  }
+
+  .sheet h1 {
+    overflow-wrap: anywhere;
+  }
+
+  /* A select under 16px makes iPhones zoom in when it's tapped. */
+  select {
+    font-size: max(1rem, 16px);
+  }
+}
+
+/* On touch screens a tapped button can stay in its hover colours. Keep the normal look there. */
+@media (hover: none) {
+  .btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .btn-primary:hover {
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .btn-danger:hover {
+    background: var(--paper);
+    color: var(--danger);
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

@@ -216,7 +216,26 @@ function parseTags(text) {
 
 // ---------- header links ----------
 
+// On phones the links fold away behind a Menu button.
+const header = document.querySelector(".site-header");
+const menuToggle = document.getElementById("menu-toggle");
+
+function setMenuOpen(open) {
+  header.classList.toggle("menu-open", open);
+  menuToggle.setAttribute("aria-expanded", String(open));
+  menuToggle.querySelector(".menu-label").textContent = open ? "Close" : "Menu";
+}
+
+menuToggle.addEventListener("click", () => setMenuOpen(!header.classList.contains("menu-open")));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && header.classList.contains("menu-open")) {
+    setMenuOpen(false);
+    menuToggle.focus();
+  }
+});
+
 function renderNav() {
+  setMenuOpen(false); // every page change closes the menu
   const user = session.get();
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
@@ -231,6 +250,15 @@ function renderNav() {
        <a href="#/practice">Practise</a>
        <a href="#/login">Log in</a>
        <a class="btn btn-primary" href="#/signup">Sign up</a>`;
+
+  // Mark the link for the section you're in, e.g. "Quizzes" on any quiz page.
+  const section = (location.hash.replace(/^#\/?/, "").split(/[/?]/)[0]) || "";
+  const sectionOf = { quiz: "quizzes", host: "quizzes", history: "quizzes", note: "", edit: "", new: "new" };
+  const current = section in sectionOf ? sectionOf[section] : section;
+  nav.querySelectorAll("a[href^='#/']").forEach((link) => {
+    const target = link.getAttribute("href").slice(2).split(/[/?]/)[0];
+    if (target === current) link.setAttribute("aria-current", "page");
+  });
 
   const logout = document.getElementById("logout");
   if (logout) {
