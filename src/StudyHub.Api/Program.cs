@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using StudyHub.Api.Common;
 using StudyHub.Api.Data;
 using StudyHub.Api.Live;
+using StudyHub.Api.Practice;
 using StudyHub.Api.Security;
 using StudyHub.Api.Services;
 
@@ -45,6 +46,13 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IGameHistoryService, GameHistoryService>();
+builder.Services.AddScoped<IPracticeService>(sp => new PracticeService(
+    sp.GetRequiredService<AppDbContext>(),
+    sp.GetRequiredService<PracticeRegistry>(),
+    sp.GetRequiredService<IGameHistoryService>()));
+
+// Solo practice runs in progress live in memory, like live games.
+builder.Services.AddSingleton<PracticeRegistry>();
 
 // Live quizzes: SignalR keeps a connection open to each browser, and the registry holds the running games.
 builder.Services.AddSignalR();

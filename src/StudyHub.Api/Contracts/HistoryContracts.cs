@@ -10,7 +10,8 @@ public record HistoryItem(
     int QuestionsPlayed,
     int Rank,
     int Players,
-    bool CorrectOnly);
+    bool CorrectOnly,
+    bool IsPractice);
 
 /// <summary>One past game of a quiz, as its writer sees it.</summary>
 public record SessionSummary(
@@ -30,6 +31,7 @@ public record QuizStatsResponse(
     Guid QuizId,
     string Title,
     int TimesPlayed,
+    int TimesPractised,
     int TotalPlayers,
     int SignedInPlayers,
     int AverageCorrectPercent,
@@ -47,4 +49,5 @@ public record SiteStatsResponse(
     int GamePlayers,
     int GamesLast7Days,
     int PlayersLast7Days,
-    int OpenReports);
+    int OpenReports,
+    int PracticeRuns);

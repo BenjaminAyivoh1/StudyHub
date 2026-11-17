@@ -9,6 +9,8 @@ const OPTION_LETTERS = ["A", "B", "C", "D"];
 const SECONDS_CHOICES = [10, 20, 30, 45, 60];
 const PAUSE_CHOICES = [3, 5, 8, 15]; // seconds to wait after the answer is shown, when "move on automatically" is on
 const DEFAULT_PAUSE = 8;
+const PRACTICE_COUNTS = [5, 10, 15];
+const DEFAULT_PRACTICE_COUNT = 10;
 
 let quizConnection = null; // the live connection to the server while hosting or playing
 let quizTimer = null; // the countdown that is running, if any
@@ -95,8 +97,8 @@ function ordinal(n) {
   return `${n}${["th", "st", "nd", "rd"][n % 10] || "th"}`;
 }
 
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
+function plural(count, word, many = `${word}s`) {
+  return `${count} ${count === 1 ? word : many}`;
 }
 
 function leaderboardHtml(rows) {
@@ -123,6 +125,7 @@ async function pageQuizzes(id) {
     <div class="quiz-top">
       <a class="btn btn-primary" href="#/quiz/new">New quiz</a>
       <a class="btn" href="#/join">Join a game</a>
+      <a class="btn" href="#/practice">Practise on your own</a>
       <a class="btn" href="#/history">Your quiz history</a>
     </div>
     <section class="quiz-list" id="quiz-list"><p class="muted">Loading your quizzes…</p></section>`;
@@ -151,10 +154,15 @@ async function pageQuizzes(id) {
     <article class="panel quiz-item">
       <div>
         <h2>${esc(quiz.title)}</h2>
-        <p class="muted">${plural(quiz.questionCount, "question")}, written ${esc(formatDate(quiz.createdAtUtc))}, ${quiz.timesPlayed === 0 ? "not played yet" : `played ${plural(quiz.timesPlayed, "time")}`}</p>
+        <p class="muted">${plural(quiz.questionCount, "question")}, written ${esc(formatDate(quiz.createdAtUtc))}, ${quiz.timesPlayed === 0 ? "not played live yet" : `played live ${plural(quiz.timesPlayed, "time")}`}</p>
+        <p class="quiz-flags">
+          <span class="quiz-flag ${quiz.isPublic ? "is-shared" : ""}">${quiz.isPublic ? "Shared for practice" : "Private"}</span>
+          ${quiz.topic ? `<span class="quiz-flag">${esc(quiz.topic)}</span>` : ""}
+        </p>
       </div>
       <div class="form-actions">
         <a class="btn btn-primary" href="#/host/${esc(quiz.id)}">Host live</a>
+        <a class="btn" href="#/practice/quiz/${esc(quiz.id)}">Practise</a>
         <a class="btn" href="#/quiz/stats/${esc(quiz.id)}">Stats</a>
         <a class="btn" href="#/quiz/edit/${esc(quiz.id)}">Edit</a>
         <button type="button" class="btn btn-danger" data-delete-quiz="${esc(quiz.id)}">Delete</button>
@@ -195,12 +203,12 @@ async function pageQuizStats(quizId, id) {
 
   document.title = `${stats.title}: stats | StudyHub`;
 
-  if (stats.timesPlayed === 0) {
+  if (stats.timesPlayed === 0 && stats.timesPractised === 0) {
     box.innerHTML = `
       <h1>${esc(stats.title)}</h1>
       <div class="empty stats-empty">
         <h2>Nobody has played this quiz yet</h2>
-        <p class="muted">Host it live, and the results will show up here once you show the final scores.</p>
+        <p class="muted">Host it live, or share it for practice. Results show up here after a game's final scores, or when a logged-in student finishes practising it.</p>
         <a class="btn btn-primary" href="#/host/${esc(stats.quizId)}">Host live</a>
       </div>`;
     return;
@@ -211,15 +219,16 @@ async function pageQuizStats(quizId, id) {
     <p class="lede">How this quiz has gone so far.</p>
 
     <section class="stat-cards" aria-label="Summary">
-      ${statCard("Times played", stats.timesPlayed)}
-      ${statCard("Players in total", stats.totalPlayers, stats.signedInPlayers > 0 ? `${plural(stats.signedInPlayers, "student")} with an account` : "")}
-      ${statCard("Average right answers", `${stats.averageCorrectPercent}%`)}
+      ${statCard("Live games", stats.timesPlayed)}
+      ${statCard("Players in live games", stats.totalPlayers, stats.signedInPlayers > 0 ? `${plural(stats.signedInPlayers, "student")} with an account` : "")}
+      ${statCard("Practice runs", stats.timesPractised, "By logged-in students")}
+      ${statCard("Average right answers", `${stats.averageCorrectPercent}%`, "Live games and practice")}
       ${statCard("Last played", formatDate(stats.lastPlayedAtUtc))}
     </section>
 
     <section class="panel stats-section">
       <h2>Questions, hardest first</h2>
-      <p class="muted">The share of players who got each question right, across every game.</p>
+      <p class="muted">The share of answers that were right for each question, across live games and practice.</p>
       <ul class="question-stats">
         ${stats.questions.map((q) => `
           <li>
@@ -228,13 +237,13 @@ async function pageQuizStats(quizId, id) {
               <span class="question-stat-value">${q.correctPercent}% right</span>
             </div>
             <div class="bar" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, q.correctPercent))}%"></span></div>
-            <p class="muted question-stat-detail">${q.correct} of ${q.asked} players${q.asked - q.answered > 0 ? `, ${q.asked - q.answered} didn't answer` : ""}</p>
+            <p class="muted question-stat-detail">${q.correct} right out of ${plural(q.asked, "try", "tries")}${q.asked - q.answered > 0 ? `, ${q.asked - q.answered} not answered` : ""}</p>
           </li>`).join("")}
       </ul>
     </section>
 
-    <section class="panel stats-section">
-      <h2>Recent games</h2>
+    ${stats.sessions.length === 0 ? "" : `<section class="panel stats-section">
+      <h2>Recent live games</h2>
       <div class="table-scroll">
         <table class="games-table">
           <thead>
@@ -251,7 +260,7 @@ async function pageQuizStats(quizId, id) {
           </tbody>
         </table>
       </div>
-    </section>`;
+    </section>`}`;
 }
 
 function statCard(label, value, detail = "") {
@@ -275,7 +284,7 @@ async function pageHistory(id) {
   app.innerHTML = `
     <a class="back" href="#/quizzes">Back to quizzes</a>
     <h1>Your quiz history</h1>
-    <p class="lede">Every quiz you've played while logged in. Only you can see this.</p>
+    <p class="lede">Every live quiz and practice run you've done while logged in. Only you can see this.</p>
     <section class="history" id="history"><p class="muted">Loading your results…</p></section>`;
   const box = document.getElementById("history");
 
@@ -291,20 +300,32 @@ async function pageHistory(id) {
   if (items.length === 0) {
     box.innerHTML = `
       <div class="empty">
-        <h2>No games yet</h2>
-        <p class="muted">Join a quiz while you're logged in, and your score will be saved here.</p>
-        <a class="btn btn-primary" href="#/join">Join a quiz</a>
+        <h2>Nothing here yet</h2>
+        <p class="muted">Join a live quiz or practise on your own while you're logged in, and your results will be saved here.</p>
+        <div class="form-actions">
+          <a class="btn btn-primary" href="#/join">Join a quiz</a>
+          <a class="btn" href="#/practice">Practise on your own</a>
+        </div>
       </div>`;
     return;
   }
 
   box.innerHTML = `
     <ul class="history-list">
-      ${items.map((item) => `
+      ${items.map((item) => item.isPractice ? `
+        <li class="panel history-item is-practice">
+          <div class="history-main">
+            <h2>${esc(item.quizTitle)}</h2>
+            <p class="muted">${esc(formatDate(item.playedAtUtc))}, practice on your own</p>
+          </div>
+          <dl class="history-figures">
+            <div><dt>Right answers</dt><dd>${item.correctCount} of ${item.questionsPlayed}</dd></div>
+          </dl>
+        </li>` : `
         <li class="panel history-item">
           <div class="history-main">
             <h2>${esc(item.quizTitle)}</h2>
-            <p class="muted">${esc(formatDate(item.playedAtUtc))}, ${item.correctOnly ? "correct answers only" : "speed and accuracy"}</p>
+            <p class="muted">${esc(formatDate(item.playedAtUtc))}, live game, ${item.correctOnly ? "correct answers only" : "speed and accuracy"}</p>
           </div>
           <dl class="history-figures">
             <div><dt>Place</dt><dd>${ordinal(item.rank)} of ${item.players}</dd></div>
@@ -329,6 +350,8 @@ async function pageQuizEditor(quizId, id) {
   }
 
   let title = "";
+  let topic = "";
+  let isPublic = false;
   let questions = [blankQuestion()];
 
   if (quizId) {
@@ -337,6 +360,8 @@ async function pageQuizEditor(quizId, id) {
       const quiz = await api(`/quizzes/${encodeURIComponent(quizId)}`);
       if (id !== renderId) return;
       title = quiz.title;
+      topic = quiz.topic || "";
+      isPublic = quiz.isPublic;
       questions = quiz.questions.map((q) => ({
         text: q.text,
         options: [0, 1, 2, 3].map((i) => q.options[i] || ""),
@@ -354,6 +379,8 @@ async function pageQuizEditor(quizId, id) {
     const form = document.getElementById("quiz-form");
     if (!form) return;
     title = form.elements.title.value;
+    topic = form.elements.topic.value;
+    isPublic = form.elements.isPublic.checked;
     questions = [...form.querySelectorAll(".question-edit")].map((fieldset, index) => {
       const checked = fieldset.querySelector(`input[name="correct-${index}"]:checked`);
       return {
@@ -375,6 +402,21 @@ async function pageQuizEditor(quizId, id) {
             <span>Quiz title</span>
             <input name="title" maxlength="200" value="${esc(title)}" placeholder="Operating systems: week 4 recap">
           </label>
+
+          <div class="share-row">
+            <label class="field">
+              <span>Topic (optional)</span>
+              <input name="topic" maxlength="50" value="${esc(topic)}" placeholder="operating systems" autocomplete="off">
+              <small>Used to group questions for random practice</small>
+            </label>
+            <label class="check-field">
+              <input type="checkbox" name="isPublic" ${isPublic ? "checked" : ""}>
+              <span>
+                <strong>Share for practice</strong>
+                <small>Other students can practise this quiz on their own. Only you can edit it or host it.</small>
+              </span>
+            </label>
+          </div>
 
           ${questions.map((question, index) => `
             <fieldset class="question-edit">
@@ -438,7 +480,7 @@ async function pageQuizEditor(quizId, id) {
 
       let request;
       try {
-        request = buildQuizRequest(title, questions);
+        request = buildQuizRequest(title, questions, { topic, isPublic });
       } catch (error) {
         draw(error.message);
         return;
@@ -461,11 +503,13 @@ async function pageQuizEditor(quizId, id) {
 }
 
 // Checks the quiz and shapes it the way the API expects. Blank answers are dropped.
-function buildQuizRequest(title, questions) {
+function buildQuizRequest(title, questions, { topic = "", isPublic = false } = {}) {
   if (title.trim().length < 3) throw new Error("Give the quiz a title of at least 3 characters.");
 
   return {
     title: title.trim(),
+    topic: topic.trim() || null,
+    isPublic,
     questions: questions.map((question, index) => {
       const label = `Question ${index + 1}`;
       if (question.text.trim().length < 3) throw new Error(`${label}: write the question.`);
@@ -960,4 +1004,231 @@ function playGame(play, connection, joined, name) {
   });
 
   drawWaiting();
+}
+
+// ---------- page: practise on your own ----------
+
+async function pagePractice(id) {
+  const user = session.get();
+  app.innerHTML = `
+    <section id="practice">
+      <h1>Practise on your own</h1>
+      <p class="lede">No host, no timer. Answer at your own pace and see the right answer straight away.</p>
+      <p class="join-note">${user
+        ? `Logged in as ${esc(user.displayName)}. Your practice runs are saved to your <a href="#/history">quiz history</a>.`
+        : `Practising as a guest. <a href="#/login?next=${encodeURIComponent("/practice")}">Log in</a> first if you want to keep your results.`}</p>
+
+      <div class="practice-grid">
+        <section class="panel practice-mix">
+          <h2>Random mix</h2>
+          <p class="muted">Questions picked at random from every quiz students have shared.</p>
+          <form class="form" id="mix-form">
+            <label class="field">
+              <span>Topic</span>
+              <select name="topic" id="mix-topic">
+                <option value="">All topics</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>How many questions</span>
+              <select name="count">
+                ${PRACTICE_COUNTS.map((n) => `<option value="${n}" ${n === DEFAULT_PRACTICE_COUNT ? "selected" : ""}>${n} questions</option>`).join("")}
+              </select>
+            </label>
+            <p class="error" role="alert" hidden></p>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Start practising</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="practice-shared">
+          <h2>Shared quizzes</h2>
+          <div id="shared-list"><p class="muted">Loading shared quizzes…</p></div>
+        </section>
+      </div>
+    </section>`;
+
+  document.getElementById("mix-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitForm(event.target, async (data) => {
+      const body = { topic: data.get("topic") || null, count: Number(data.get("count")) };
+      const begin = () => api("/practice/start", { method: "POST", body });
+      const start = await begin();
+      if (id === renderId) runPractice(start, begin);
+    });
+  });
+
+  const list = document.getElementById("shared-list");
+  let topics;
+  let quizzes;
+  try {
+    [topics, quizzes] = await Promise.all([api("/practice/topics"), api("/practice/quizzes")]);
+  } catch (error) {
+    if (id === renderId) list.innerHTML = `<p class="error" role="alert">${esc(error.message)}</p>`;
+    return;
+  }
+  if (id !== renderId) return;
+
+  document.getElementById("mix-topic").insertAdjacentHTML(
+    "beforeend",
+    topics.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join(""));
+
+  if (quizzes.length === 0) {
+    list.innerHTML = `
+      <div class="empty">
+        <h2>No shared quizzes yet</h2>
+        <p class="muted">When you write a quiz, tick "Share for practice" so other students can use it.</p>
+        ${user ? `<a class="btn btn-primary" href="#/quiz/new">Write a quiz</a>` : ""}
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `
+    <ul class="shared-quizzes">
+      ${quizzes.map((quiz) => `
+        <li class="panel shared-quiz">
+          <div>
+            <h3>${esc(quiz.title)}</h3>
+            <p class="muted">${plural(quiz.questionCount, "question")}, by ${esc(quiz.authorName)}</p>
+            ${quiz.topic ? `<p class="quiz-flags"><span class="quiz-flag">${esc(quiz.topic)}</span></p>` : ""}
+          </div>
+          <a class="btn" href="#/practice/quiz/${esc(quiz.id)}">Practise</a>
+        </li>`).join("")}
+    </ul>`;
+}
+
+// Opening #/practice/quiz/{id} starts that quiz straight away.
+async function pagePracticeQuiz(quizId, id) {
+  const begin = () => api("/practice/start", { method: "POST", body: { quizId } });
+  app.innerHTML = `<section class="play" id="practice-run"><p class="stage-label">Getting your questions…</p></section>`;
+  let start;
+  try {
+    start = await begin();
+  } catch (error) {
+    if (id !== renderId) return;
+    document.getElementById("practice-run").innerHTML = `
+      <h1>Can't start this practice</h1>
+      <p class="lede">${esc(error.message)}</p>
+      <div class="form-actions"><a class="btn btn-primary" href="#/practice">See shared quizzes</a></div>`;
+    return;
+  }
+  if (id === renderId) runPractice(start, begin);
+}
+
+// One question at a time. The server checks each answer and says which one was right.
+// "Practise again" calls begin() for a fresh run with the same settings (a new random mix, or the same quiz).
+function runPractice(start, begin) {
+  app.innerHTML = `<section class="play" id="practice-run"></section>`;
+  const box = document.getElementById("practice-run");
+  const id = renderId;
+  const total = start.questions.length;
+  let index = 0;
+  let score = 0;
+
+  const drawQuestion = () => {
+    const q = start.questions[index];
+    box.innerHTML = `
+      <p class="stage-label">${esc(start.title)}</p>
+      <p class="practice-progress">Question ${index + 1} of ${total}<span aria-hidden="true">, </span><span>${score} right so far</span></p>
+      <h1 class="play-question">${esc(q.text)}</h1>
+      <div class="answer-buttons">
+        ${q.options.map((text, i) => `
+          <button type="button" class="answer option-${i}" data-answer="${i}">
+            <span class="letter" aria-hidden="true">${OPTION_LETTERS[i]}</span>
+            <span>${esc(text)}</span>
+          </button>`).join("")}
+      </div>
+      <p class="play-status" id="play-status" role="status"></p>
+      <div class="practice-next" id="practice-next"></div>`;
+
+    const status = document.getElementById("play-status");
+    const buttons = [...box.querySelectorAll(".answer")];
+    buttons[0].focus();
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const choice = Number(button.dataset.answer);
+        buttons.forEach((b) => { b.disabled = true; });
+        status.textContent = "Checking…";
+
+        let result;
+        try {
+          result = await api(`/practice/${encodeURIComponent(start.practiceId)}/answer`, {
+            method: "POST",
+            body: { question: index, option: choice },
+          });
+        } catch (error) {
+          if (id !== renderId) return;
+          status.textContent = error.message;
+          buttons.forEach((b) => { b.disabled = false; });
+          return;
+        }
+        if (id !== renderId) return;
+
+        score = result.score;
+        buttons.forEach((b, i) => {
+          if (i === result.correctIndex) b.classList.add("is-answer");
+          else if (i === choice) b.classList.add("is-miss");
+        });
+        status.innerHTML = result.correct
+          ? `<span class="is-right">Correct!</span>`
+          : `<span class="is-wrong">Not quite.</span> The answer was ${esc(OPTION_LETTERS[result.correctIndex])}: ${esc(q.options[result.correctIndex])}`;
+
+        const last = index === total - 1;
+        const next = document.getElementById("practice-next");
+        next.innerHTML = `<button type="button" class="btn btn-primary" id="next-button">${last ? "See results" : "Next question"}</button>`;
+        const nextButton = document.getElementById("next-button");
+        nextButton.focus();
+        nextButton.addEventListener("click", () => {
+          if (last) finish();
+          else {
+            index += 1;
+            drawQuestion();
+          }
+        });
+      });
+    });
+  };
+
+  const finish = async () => {
+    box.innerHTML = `<p class="stage-label">Adding up your score…</p>`;
+    let final;
+    try {
+      final = await api(`/practice/${encodeURIComponent(start.practiceId)}/finish`, { method: "POST" });
+    } catch (error) {
+      if (id !== renderId) return;
+      box.innerHTML = `
+        <h1>Couldn't finish this practice</h1>
+        <p class="lede">${esc(error.message)}</p>
+        <div class="form-actions"><a class="btn btn-primary" href="#/practice">Back to practice</a></div>`;
+      return;
+    }
+    if (id !== renderId) return;
+
+    const percent = final.total === 0 ? 0 : Math.round((100 * final.score) / final.total);
+    box.innerHTML = `
+      <p class="stage-label">${esc(start.title)}</p>
+      <h1>${final.score} of ${final.total} right</h1>
+      <div class="practice-meter" role="img" aria-label="${percent}% right"><span style="width:${percent}%"></span></div>
+      <p class="lede">${percent === 100 ? "Every one right. Nicely done." : percent >= 70 ? "Good going. Have another go at the ones you missed." : "Keep at it. Each run makes the answers stick."}</p>
+      <p class="muted">${final.saved
+        ? `Saved to your <a href="#/history">quiz history</a>.`
+        : session.get() ? "Nothing was answered, so this run wasn't saved." : "You practised as a guest, so this run wasn't saved."}</p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="practice-again">Practise again</button>
+        <a class="btn" href="#/practice">Choose something else</a>
+      </div>`;
+    document.getElementById("practice-again").addEventListener("click", async (event) => {
+      event.currentTarget.disabled = true;
+      try {
+        const fresh = await begin();
+        if (id === renderId) runPractice(fresh, begin);
+      } catch (error) {
+        if (id === renderId) toast(error.message, "error");
+      }
+    });
+  };
+
+  drawQuestion();
 }

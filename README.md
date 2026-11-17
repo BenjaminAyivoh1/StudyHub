@@ -17,6 +17,7 @@ A study-notes platform for university students. Students write and share notes, 
 - Report a note (one open report per user per note)
 - An admin page for reviewing reports and removing notes or comments
 - Quiz history: finished games are saved. Logged-in players see their own results, the student who wrote a quiz sees how it has been played (times played, players, hardest questions), and admins see site-wide totals only
+- Solo practice: no host needed. A quiz writer can tick "Share for practice" and give the quiz a topic; anyone can then practise it, or practise a random mix of shared questions from one topic. Writers can practise their own private quizzes too. Answers are checked by the server one at a time, and logged-in students' runs are saved to their history
 - Live quizzes: write multiple-choice questions, host a game, and let classmates join on their phones with a code and a nickname. Faster right answers score more, with a live leaderboard
 - A website for all of the above, served by the API (plain HTML, CSS and JavaScript in `wwwroot`)
 - 15 starter notes so a new site isn't empty, posted by a clearly named "StudyHub Team" account. They are organised by topic with no course code, since codes differ between universities; students add their own
@@ -102,7 +103,12 @@ The app reads the `PORT` variable if the host sets one.
 | PUT | `/api/quizzes/{id}` | yes (owner only) | Replace a quiz |
 | DELETE | `/api/quizzes/{id}` | yes (owner only) | Delete a quiz |
 | GET | `/api/quizzes/{id}/stats` | yes (owner only) | How the quiz has been played |
-| GET | `/api/history/mine` | yes | The quiz games you have played |
+| GET | `/api/history/mine` | yes | The quiz games and practice runs you have done |
+| GET | `/api/practice/quizzes?topic=&search=` | no | Quizzes shared for practice (no answers) |
+| GET | `/api/practice/topics` | no | Topics that have shared quizzes |
+| POST | `/api/practice/start` | no | Start practising one quiz (`quizId`) or a random mix (`topic`, `count` 3 to 20) |
+| POST | `/api/practice/{id}/answer` | no | Answer one question; returns whether it was right and the right answer |
+| POST | `/api/practice/{id}/finish` | no | End the run; saved to history if you're logged in |
 | GET | `/api/admin/stats` | admin | Site-wide totals |
 | GET | `/api/admin/reports` | admin | List open reports |
 | POST | `/api/admin/reports/{id}/dismiss` | admin | Keep the note and close the report |
@@ -126,6 +132,10 @@ The host chooses two settings in the lobby:
 - **Scoring.** *Speed and accuracy* (the default): a right answer earns 500 points plus up to 500 more for speed. The server measures the time, so a player cannot claim to have answered faster than they did. *Correct answers only*: one point per right answer, and speed doesn't matter.
 - **Move on automatically.** When it's on, the next question starts a set time after the answer is shown: 3, 5, 8 (the default) or 15 seconds, chosen by the host. The host can pause it, and can always click Next themselves.
 
+## How solo practice works
+
+`Practice/PracticeRun.cs` holds one student's run: the questions with their right answers stay on the server, and the browser only learns the right answer after sending its own. Each question can be answered once. `Practice/PracticeRegistry.cs` keeps runs in memory for up to three hours, and `Services/PracticeService.cs` decides what may be practised: a shared quiz, your own quiz (even a private one), or a random mix of shared questions. A finished run by a logged-in student is saved as a `GameSession` with `IsPractice` set, so it shows in their history. In a quiz's stats, practice runs are counted apart from live games, but they do feed the average and the hardest-questions list.
+
 ## How the code is organised
 
 ```
@@ -137,6 +147,7 @@ src/StudyHub.Api
   Security/      password hashing and JWT creation
   Contracts/     request and response shapes (what the API accepts and returns)
   Live/          live quiz games: the rules, the registry of running games, and the SignalR hub
+  Practice/      solo practice runs and the registry that holds them
   Common/        exceptions and the handler that turns them into HTTP responses
   wwwroot/       the website: index.html, styles.css, app.js (notes) and quiz.js (quizzes)
 tests/StudyHub.Tests   unit tests for the services and the password hasher
@@ -153,7 +164,7 @@ tests/StudyHub.Tests   unit tests for the services and the password hasher
 ## Roadmap
 
 - [x] Phase 1: notes library, built and deployed (still to do: grow real users)
-- [x] Phase 2: live quiz with SignalR (a host writes a quiz, classmates join with a code)
+- [x] Phase 2: live quiz with SignalR (a host writes a quiz, classmates join with a code), quiz history and stats, and solo practice
 - [ ] Phase 3: rate limiting on the public endpoints
 - [ ] Phase 4: study assistant that generates practice questions from notes
 

@@ -146,6 +146,9 @@ namespace StudyHub.Api.Data.Migrations
                     b.Property<Guid>("HostId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsPractice")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("PlayedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -235,6 +238,9 @@ namespace StudyHub.Api.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -243,7 +249,13 @@ namespace StudyHub.Api.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Topic")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("IsPublic", "Topic");
 
                     b.HasIndex("OwnerId", "CreatedAtUtc");
 

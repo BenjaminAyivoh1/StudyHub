@@ -7,10 +7,17 @@ using StudyHub.Api.Live;
 
 namespace StudyHub.Api.Services;
 
+/// <summary>How a student did on one question of a practice run.</summary>
+public record PracticeOutcome(string Text, bool Answered, bool Correct);
+
 public interface IGameHistoryService
 {
     /// <summary>Saves a finished game. Players who weren't logged in are saved by nickname only.</summary>
     Task SaveAsync(Guid quizId, Guid hostId, string quizTitle, GameSummary summary, CancellationToken ct = default);
+
+    /// <summary>Saves a finished solo practice run to the student's history.</summary>
+    Task SavePracticeAsync(
+        Guid userId, Guid? quizId, string title, IReadOnlyList<PracticeOutcome> outcomes, CancellationToken ct = default);
 
     /// <summary>The games a logged-in student played, newest first.</summary>
     Task<IReadOnlyList<HistoryItem>> ListMineAsync(Guid userId, CancellationToken ct = default);
@@ -86,6 +93,60 @@ public class GameHistoryService(AppDbContext db) : IGameHistoryService
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task SavePracticeAsync(
+        Guid userId, Guid? quizId, string title, IReadOnlyList<PracticeOutcome> outcomes, CancellationToken ct = default)
+    {
+        if (outcomes.Count == 0)
+        {
+            return;
+        }
+
+        var name = await db.Users.Where(u => u.Id == userId).Select(u => u.DisplayName).FirstOrDefaultAsync(ct);
+        if (name is null)
+        {
+            return; // the account no longer exists
+        }
+
+        var quizStillExists = quizId is Guid id && await db.Quizzes.AnyAsync(q => q.Id == id, ct);
+        var correct = outcomes.Count(o => o.Correct);
+        var trimmed = (title ?? string.Empty).Trim();
+
+        var session = new GameSession
+        {
+            QuizId = quizStillExists ? quizId : null,
+            QuizTitle = trimmed.Length > 200 ? trimmed[..200] : trimmed,
+            HostId = userId,
+            CorrectOnly = true,
+            IsPractice = true,
+            QuestionsPlayed = outcomes.Count,
+            PlayedAtUtc = DateTime.UtcNow
+        };
+
+        session.Results.Add(new GameResult
+        {
+            UserId = userId,
+            Nickname = name.Length > 50 ? name[..50] : name,
+            Score = correct,
+            CorrectCount = correct,
+            Rank = 1
+        });
+
+        for (var i = 0; i < outcomes.Count; i++)
+        {
+            session.QuestionStats.Add(new GameQuestionStat
+            {
+                Position = i,
+                QuestionText = outcomes[i].Text,
+                Asked = 1,
+                Answered = outcomes[i].Answered ? 1 : 0,
+                Correct = outcomes[i].Correct ? 1 : 0
+            });
+        }
+
+        db.GameSessions.Add(session);
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyList<HistoryItem>> ListMineAsync(Guid userId, CancellationToken ct = default)
     {
         return await db.GameResults
@@ -102,7 +163,8 @@ public class GameHistoryService(AppDbContext db) : IGameHistoryService
                 r.Session.QuestionsPlayed,
                 r.Rank,
                 r.Session.Results.Count,
-                r.Session.CorrectOnly))
+                r.Session.CorrectOnly,
+                r.Session.IsPractice))
             .ToListAsync(ct);
     }
 
@@ -124,15 +186,18 @@ public class GameHistoryService(AppDbContext db) : IGameHistoryService
             .OrderByDescending(s => s.PlayedAtUtc)
             .ToListAsync(ct);
 
+        // Live games and practice runs are counted separately; both feed the averages and question stats.
+        var liveSessions = sessions.Where(s => !s.IsPractice).ToList();
         var results = sessions.SelectMany(s => s.Results.Select(r => (Session: s, Result: r))).ToList();
+        var liveResults = results.Where(x => !x.Session.IsPractice).ToList();
 
-        // Average share of questions answered correctly, per player per game.
+        // Average share of questions answered correctly, per player per game or practice run.
         var scored = results.Where(x => x.Session.QuestionsPlayed > 0).ToList();
         var averageCorrect = scored.Count == 0
             ? 0
             : (int)Math.Round(scored.Average(x => 100.0 * x.Result.CorrectCount / x.Session.QuestionsPlayed));
 
-        var recent = sessions
+        var recent = liveSessions
             .Take(MaxSessionsShown)
             .Select(s =>
             {
@@ -164,9 +229,10 @@ public class GameHistoryService(AppDbContext db) : IGameHistoryService
         return new QuizStatsResponse(
             quiz.Id,
             quiz.Title,
-            sessions.Count,
-            results.Count,
-            results.Where(x => x.Result.UserId is not null).Select(x => x.Result.UserId).Distinct().Count(),
+            liveSessions.Count,
+            sessions.Count - liveSessions.Count,
+            liveResults.Count,
+            liveResults.Where(x => x.Result.UserId is not null).Select(x => x.Result.UserId).Distinct().Count(),
             averageCorrect,
             sessions.FirstOrDefault()?.PlayedAtUtc,
             recent,

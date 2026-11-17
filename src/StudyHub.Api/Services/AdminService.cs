@@ -75,11 +75,12 @@ public class AdminService(AppDbContext db) : IAdminService
             await db.Materials.CountAsync(ct),
             await db.Comments.CountAsync(ct),
             await db.Quizzes.CountAsync(ct),
-            await db.GameSessions.CountAsync(ct),
-            await db.GameResults.CountAsync(ct),
-            await db.GameSessions.CountAsync(s => s.PlayedAtUtc >= weekAgo, ct),
-            await db.GameResults.CountAsync(r => r.Session.PlayedAtUtc >= weekAgo, ct),
-            await db.Reports.CountAsync(r => r.Status == ReportStatus.Open, ct));
+            await db.GameSessions.CountAsync(s => !s.IsPractice, ct),
+            await db.GameResults.CountAsync(r => !r.Session.IsPractice, ct),
+            await db.GameSessions.CountAsync(s => !s.IsPractice && s.PlayedAtUtc >= weekAgo, ct),
+            await db.GameResults.CountAsync(r => !r.Session.IsPractice && r.Session.PlayedAtUtc >= weekAgo, ct),
+            await db.Reports.CountAsync(r => r.Status == ReportStatus.Open, ct),
+            await db.GameSessions.CountAsync(s => s.IsPractice, ct));
     }
 
     public async Task RemoveCommentAsync(Guid commentId, CancellationToken ct = default)

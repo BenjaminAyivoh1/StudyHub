@@ -221,12 +221,14 @@ function renderNav() {
   nav.innerHTML = user
     ? `<a href="#/">Browse notes</a>
        <a href="#/quizzes">Quizzes</a>
+       <a href="#/practice">Practise</a>
        ${user.isAdmin ? `<a href="#/admin">Admin</a>` : ""}
        <a class="btn btn-primary" href="#/new">Write a note</a>
        <span class="who">${avatar(user.displayName)}<span>${esc(user.displayName)}</span></span>
        <button type="button" class="link-button" id="logout">Log out</button>`
     : `<a href="#/">Browse notes</a>
        <a href="#/join">Join a quiz</a>
+       <a href="#/practice">Practise</a>
        <a href="#/login">Log in</a>
        <a class="btn btn-primary" href="#/signup">Sign up</a>`;
 
@@ -847,6 +849,7 @@ async function loadSiteStats(id) {
     statCard("Quizzes written", stats.quizzes),
     statCard("Games played", stats.gamesPlayed, `${stats.gamesLast7Days} in the last 7 days`),
     statCard("Players in games", stats.gamePlayers, `${stats.playersLast7Days} in the last 7 days`),
+    statCard("Practice runs", stats.practiceRuns, "Saved runs by logged-in students"),
     statCard("Open reports", stats.openReports),
   ].join("");
 }
@@ -967,6 +970,9 @@ function route() {
       return pageJoin(params);
     case "history":
       return pageHistory(id);
+    case "practice":
+      if (parts[1] === "quiz" && parts[2]) return pagePracticeQuiz(parts[2], id);
+      return pagePractice(id);
     default:
       app.innerHTML = `
         <h1>Page not found</h1>

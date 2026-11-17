@@ -12,8 +12,12 @@ public class GameSession
     /// <summary>The quiz title at the time it was played, so history still reads well after edits or deletion.</summary>
     public string QuizTitle { get; set; } = string.Empty;
 
+    /// <summary>For a live game, the host. For a practice run, the student who practised.</summary>
     public Guid HostId { get; set; }
     public bool CorrectOnly { get; set; }
+
+    /// <summary>True for a solo practice run, false for a live game with a host.</summary>
+    public bool IsPractice { get; set; }
 
     /// <summary>How many questions were shown before the game ended.</summary>
     public int QuestionsPlayed { get; set; }

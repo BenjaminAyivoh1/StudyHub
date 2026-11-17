@@ -1673,6 +1673,201 @@ select:focus-visible {
   }
 }
 
+/* ----- quiz sharing flags ----- */
+
+.quiz-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+}
+
+.quiz-flag {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.quiz-flag.is-shared {
+  border-color: transparent;
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+/* Quiz editor: topic and sharing */
+
+.share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+
+.check-field {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.check-field input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--ink);
+  flex: none;
+}
+
+.check-field span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.check-field small {
+  color: var(--ink-soft);
+}
+
+.check-field:has(input:checked) {
+  border-color: var(--ink);
+  background: #fffbe0;
+}
+
+@media (max-width: 640px) {
+  .share-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- practise on your own ----- */
+
+.practice-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  gap: 1.5rem 2rem;
+  align-items: start;
+  max-width: 60rem;
+  margin-top: 1.75rem;
+}
+
+.practice-mix {
+  padding: 1.25rem 1.5rem;
+  border-top: 3px solid var(--margin-red);
+}
+
+.practice-mix h2,
+.practice-shared h2 {
+  font-size: 1.375rem;
+}
+
+.practice-shared > h2 {
+  margin-bottom: 0.75rem;
+}
+
+.shared-quizzes {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-quiz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.shared-quiz h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.shared-quiz .muted {
+  margin: 0.15rem 0 0;
+}
+
+@media (max-width: 760px) {
+  .practice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.practice-progress {
+  margin: 0;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.answer.is-answer,
+.answer.is-miss {
+  opacity: 1;
+}
+
+.answer.is-answer {
+  outline: 4px solid #1f7a5c;
+  outline-offset: 2px;
+}
+
+.answer.is-answer::after,
+.answer.is-miss::after {
+  margin-left: auto;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.answer.is-answer::after {
+  content: "\2713";
+}
+
+.answer.is-miss {
+  outline: 4px dashed var(--danger);
+  outline-offset: 2px;
+}
+
+.answer.is-miss::after {
+  content: "\2717";
+}
+
+.play-status .is-right {
+  color: #1f7a5c;
+}
+
+.play-status .is-wrong {
+  color: var(--danger);
+}
+
+.practice-next {
+  min-height: 2.75rem;
+}
+
+.practice-meter {
+  width: min(100%, 22rem);
+  height: 0.85rem;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--edge);
+  overflow: hidden;
+}
+
+.practice-meter span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+
+.history-item.is-practice {
+  border-left: 4px solid var(--highlight);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .btn,
   input,

@@ -100,7 +100,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Quiz>(e =>
         {
             e.Property(q => q.Title).HasMaxLength(200);
+            e.Property(q => q.Topic).HasMaxLength(50);
             e.HasIndex(q => new { q.OwnerId, q.CreatedAtUtc });
+            e.HasIndex(q => new { q.IsPublic, q.Topic });
 
             e.HasOne(q => q.Owner)
                 .WithMany()

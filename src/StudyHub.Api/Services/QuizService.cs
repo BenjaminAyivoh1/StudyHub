@@ -29,7 +29,13 @@ public class QuizService(AppDbContext db) : IQuizService
             .Where(q => q.OwnerId == userId)
             .OrderByDescending(q => q.CreatedAtUtc)
             .Select(q => new QuizSummary(
-                q.Id, q.Title, q.Questions.Count, q.CreatedAtUtc, db.GameSessions.Count(s => s.QuizId == q.Id)))
+                q.Id,
+                q.Title,
+                q.Questions.Count,
+                q.CreatedAtUtc,
+                db.GameSessions.Count(s => s.QuizId == q.Id && !s.IsPractice),
+                q.IsPublic,
+                q.Topic))
             .ToListAsync(ct);
     }
 
@@ -49,7 +55,14 @@ public class QuizService(AppDbContext db) : IQuizService
     {
         var (title, questions) = Validate(request);
 
-        var quiz = new Quiz { Title = title, OwnerId = userId, Questions = questions };
+        var quiz = new Quiz
+        {
+            Title = title,
+            OwnerId = userId,
+            Questions = questions,
+            IsPublic = request.IsPublic,
+            Topic = NormalizeTopic(request.Topic)
+        };
         db.Quizzes.Add(quiz);
         await db.SaveChangesAsync(ct);
 
@@ -68,6 +81,8 @@ public class QuizService(AppDbContext db) : IQuizService
         EnsureOwner(quiz, userId);
 
         quiz.Title = title;
+        quiz.IsPublic = request.IsPublic;
+        quiz.Topic = NormalizeTopic(request.Topic);
 
         // Replace the old questions with the new ones. The new rows are added explicitly,
         // so the database is told to insert them rather than update rows that don't exist.
@@ -79,7 +94,7 @@ public class QuizService(AppDbContext db) : IQuizService
         db.QuizQuestions.AddRange(questions);
 
         await db.SaveChangesAsync(ct);
-        return new QuizResponse(quiz.Id, quiz.Title, ToDtos(questions), quiz.CreatedAtUtc);
+        return new QuizResponse(quiz.Id, quiz.Title, ToDtos(questions), quiz.CreatedAtUtc, quiz.IsPublic, quiz.Topic);
     }
 
     public async Task DeleteAsync(Guid userId, Guid quizId, CancellationToken ct = default)
@@ -178,7 +193,19 @@ public class QuizService(AppDbContext db) : IQuizService
     }
 
     private static QuizResponse ToResponse(Quiz quiz)
-        => new(quiz.Id, quiz.Title, ToDtos(quiz.Questions), quiz.CreatedAtUtc);
+        => new(quiz.Id, quiz.Title, ToDtos(quiz.Questions), quiz.CreatedAtUtc, quiz.IsPublic, quiz.Topic);
+
+    /// <summary>Topics are optional, trimmed, lower case and at most 50 characters, like note topics.</summary>
+    public static string? NormalizeTopic(string? topic)
+    {
+        var value = (topic ?? string.Empty).Trim().TrimStart('#').ToLowerInvariant();
+        if (value.Length == 0)
+        {
+            return null;
+        }
+
+        return value.Length > 50 ? value[..50] : value;
+    }
 
     private static List<QuizQuestionDto> ToDtos(IEnumerable<QuizQuestion> questions)
         => questions

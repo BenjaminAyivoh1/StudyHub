@@ -11,6 +11,12 @@ public class Quiz
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>When true, other students can practise this quiz on their own. It stays private otherwise.</summary>
+    public bool IsPublic { get; set; }
+
+    /// <summary>Optional subject such as "databases", used to build random practice. Stored in lower case.</summary>
+    public string? Topic { get; set; }
+
     public List<QuizQuestion> Questions { get; set; } = new();
 }
 
