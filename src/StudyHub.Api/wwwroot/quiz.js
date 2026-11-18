@@ -825,7 +825,8 @@ function pageJoin(params) {
         <label class="field">
           <span>Game code</span>
           <input class="code-input" name="code" required maxlength="6" autocomplete="off" autocapitalize="characters"
-            spellcheck="false" value="${esc((params.get("code") || "").toUpperCase())}" placeholder="ABC234">
+            spellcheck="false" value="${esc((params.get("code") || "").toUpperCase())}">
+          <small>The 6 letters and numbers on the host's screen</small>
         </label>
         <label class="field">
           <span>Your name</span>
@@ -837,6 +838,7 @@ function pageJoin(params) {
           <button type="submit" class="btn btn-primary">Join game</button>
         </div>
       </form>
+      <p class="join-alt">No host right now? <a href="#/practice">Practise on your own</a> instead.</p>
     </section>`;
 
   const id = renderId;
@@ -860,7 +862,11 @@ function pageJoin(params) {
       } catch (error) {
         console.error(error);
         if (connection) connection.stop().catch(() => {});
-        throw new Error(hubMessage(error));
+        let message = hubMessage(error);
+        if (message.startsWith("No game with that code")) {
+          message += " A code only works while the host has the game open.";
+        }
+        throw new Error(message);
       }
       if (id !== renderId) {
         connection.stop().catch(() => {});

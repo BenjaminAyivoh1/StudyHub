@@ -570,7 +570,7 @@ textarea.short {
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
-    line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
@@ -1870,6 +1870,14 @@ select:focus-visible {
   border-left: 4px solid var(--highlight);
 }
 
+
+.join-alt {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--edge);
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
 
 /* ----- phones: menu button, tighter layouts ----- */
 
